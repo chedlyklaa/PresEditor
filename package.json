@@ -1,0 +1,12 @@
+{
+  "name": "preseditor-monorepo-dev",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Root-level dev orchestration only — the API (server/) and client (presEditor/) are independent npm packages; this just runs both together.",
+  "scripts": {
+    "dev": "concurrently -n api,client -c blue,magenta \"npm run dev --prefix server\" \"npm run dev --prefix presEditor\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

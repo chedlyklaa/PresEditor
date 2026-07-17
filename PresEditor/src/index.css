@@ -1,0 +1,2287 @@
+:root {
+  --navy: #4b0976;
+  --navy-2: #461665;
+  --blue: #f4c10b;
+  --ink: #241130;
+  --muted: #8c6aa3;
+  --line: rgba(75, 9, 118, 0.14);
+  --display: 'Fraunces', serif;
+  --body: 'Inter', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --sidebar-w: 292px;
+  --notes-w: 300px;
+  --scene-w: 240px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--body);
+  color: var(--ink);
+  background: #fdfafc;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(244, 193, 11, 0.35);
+}
+
+.ed-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  background: #fdfafc;
+}
+
+/* ---------- top bar ---------- */
+.ed-topbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  background: var(--navy);
+  color: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  z-index: 20;
+  /* Milestone B (editor usability overhaul): the bar was rebuilt around
+     the Phase 0 mapping table specifically so this never needs to trigger
+     at any of the three audited viewport widths (1920/1440/1366) — kept
+     as a defensive fallback only, not the primary fix, in case a future
+     addition creeps past what fits again. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.ed-topbar > * {
+  flex-shrink: 0;
+}
+.ed-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14.5px;
+  white-space: nowrap;
+}
+.ed-brand svg {
+  width: 17px;
+  height: 17px;
+  color: var(--blue);
+}
+.ed-title-input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  width: 170px;
+  outline: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+.ed-title-input:focus {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--blue);
+}
+.ed-spacer {
+  flex: 1;
+}
+/* .ed-btn is used on both light surfaces (canvas toolbar, welcome screen)
+   and the dark navy top bar. This base style targets the (more common)
+   light surfaces; .ed-topbar below inverts it back to light-on-dark so it
+   stays legible there instead of white text on a near-white fill. */
+.ed-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: rgba(75, 9, 118, 0.07);
+  color: var(--navy);
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.ed-btn:hover {
+  background: rgba(75, 9, 118, 0.14);
+}
+.ed-btn:active {
+  transform: scale(0.97);
+}
+.ed-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-btn.primary {
+  background: var(--blue);
+  color: var(--navy);
+}
+.ed-btn.primary:hover {
+  background: #f7cd3e;
+}
+.ed-btn.danger {
+  color: #c33232;
+}
+.ed-btn.danger:hover {
+  background: rgba(220, 70, 70, 0.14);
+  color: #a02a2a;
+}
+.ed-btn.on {
+  background: var(--blue);
+  color: var(--navy);
+}
+.ed-btn[disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.ed-topbar .ed-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.ed-topbar .ed-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.ed-topbar .ed-btn.primary,
+.ed-topbar .ed-btn.on {
+  background: var(--blue);
+  color: var(--navy);
+}
+.ed-topbar .ed-btn.primary:hover {
+  background: #f7cd3e;
+}
+
+/* ---------- Menu.tsx: shared dropdown (Fichier/Présenter/Compte/section ⋯) ---------- */
+.ed-menu {
+  position: relative;
+  display: inline-flex;
+}
+/* position:fixed + top/left/right are set inline per-instance (Menu.tsx),
+   computed from the trigger's live getBoundingClientRect() — the panel is
+   portaled to <body>, so it's never confined by an ancestor's overflow
+   clipping (`.ed-topbar`, `.ed-sidebar`, ...). z-index only needs to clear
+   this app's own chrome, not fight a stacking context it's no longer
+   nested inside. */
+.ed-menu-panel {
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid rgba(75, 9, 118, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 16px 36px -12px rgba(75, 9, 118, 0.4);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1000;
+}
+/* .ed-context-menu (ContextMenu.tsx) shares the same panel/button look —
+   it's fixed-positioned at the right-click point instead of anchored
+   under a trigger, but otherwise the identical dropdown pattern. */
+.ed-menu-panel button,
+.ed-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: none;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.ed-menu-panel button:hover,
+.ed-context-menu button:hover {
+  background: rgba(75, 9, 118, 0.08);
+}
+.ed-menu-panel button.danger,
+.ed-context-menu button.danger {
+  color: #c33232;
+}
+.ed-menu-panel button.danger:hover,
+.ed-context-menu button.danger:hover {
+  background: rgba(220, 70, 70, 0.1);
+}
+.ed-menu-panel button svg,
+.ed-context-menu button svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ed-context-menu {
+  position: fixed;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid rgba(75, 9, 118, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 16px 36px -12px rgba(75, 9, 118, 0.4);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+}
+.ed-menu-sep {
+  height: 1px;
+  background: rgba(75, 9, 118, 0.1);
+  margin: 4px 2px;
+}
+
+/* ---------- view switcher (Éditeur | Vue d'ensemble segmented control) ---------- */
+.ed-view-switch {
+  display: flex;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+.ed-view-switch button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+.ed-view-switch button svg {
+  width: 13px;
+  height: 13px;
+}
+.ed-view-switch button:not(.on):hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.ed-view-switch button.on {
+  background: var(--blue);
+  color: var(--navy);
+}
+
+/* ---------- Présenter▾ split button ---------- */
+.ed-split-btn {
+  display: flex;
+  position: relative;
+}
+.ed-split-btn > .ed-btn.primary {
+  border-radius: 8px 0 0 8px;
+}
+.ed-split-btn .ed-menu {
+  margin-left: 1px;
+}
+.ed-split-caret {
+  border-radius: 0 8px 8px 0;
+  padding: 7px 8px;
+}
+.ed-split-caret svg {
+  width: 11px;
+  height: 11px;
+}
+.ed-topbar .ed-btn.danger {
+  color: #fff;
+}
+.ed-topbar .ed-btn.danger:hover {
+  background: rgba(220, 70, 70, 0.35);
+}
+.ed-status {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: #dac2e6;
+  opacity: 0.85;
+  white-space: nowrap;
+  min-width: 130px;
+  text-align: right;
+}
+.ed-status.saving {
+  color: var(--blue);
+}
+.ed-status.error {
+  color: #ff9d9d;
+}
+.ed-status.offline {
+  color: #f4c10b;
+}
+
+/* ---------- body layout ---------- */
+.ed-body {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr var(--scene-w);
+  min-height: 0;
+  position: relative;
+}
+.ed-body.notes-open {
+  grid-template-columns: var(--sidebar-w) 1fr var(--scene-w) var(--notes-w);
+}
+
+/* ---------- sidebar ---------- */
+.ed-sidebar {
+  background: #fff;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+.ed-sidebar.collapsed {
+  align-items: center;
+  padding-top: 8px;
+  overflow: visible;
+}
+/* ---------- Milestone C: sidebar / right-panel collapse toggles ---------- */
+/* Sized to match .ed-icon-btn (22px/13px svg) — the app's existing
+   small-icon-button convention — rather than inventing a new size. */
+.ed-panel-toggle-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: rgba(75, 9, 118, 0.06);
+}
+.ed-panel-toggle-btn:hover {
+  background: rgba(75, 9, 118, 0.12);
+  color: var(--navy);
+}
+.ed-panel-toggle-btn svg {
+  width: 13px;
+  height: 13px;
+}
+.ed-sidebar .ed-panel-toggle-btn-collapse {
+  position: sticky;
+  top: 4px;
+  align-self: flex-end;
+  margin: 4px 4px -4px 0;
+  z-index: 3;
+  transform: rotate(90deg);
+}
+.ed-sidebar.collapsed .ed-panel-toggle-btn {
+  transform: rotate(-90deg);
+}
+.ed-sec {
+  border-bottom: 1px solid var(--line);
+}
+.ed-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 8px 9px 4px;
+  cursor: grab;
+  user-select: none;
+}
+.ed-sec-head:active {
+  cursor: grabbing;
+}
+.ed-sec-head.drag-over {
+  box-shadow: inset 0 2px 0 var(--blue);
+}
+.ed-grip {
+  color: rgba(75, 9, 118, 0.28);
+  flex: none;
+  display: flex;
+}
+.ed-grip svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-chevron {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.ed-chevron svg {
+  width: 12px;
+  height: 12px;
+}
+.ed-sec.collapsed .ed-chevron {
+  transform: rotate(-90deg);
+}
+.ed-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  cursor: pointer;
+}
+.ed-sec-label {
+  flex: 1;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12.5px;
+  border: none;
+  background: none;
+  outline: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  min-width: 0;
+  color: var(--ink);
+  /* Milestone C (editor usability overhaul): was clipping raw mid-word
+     ("Section stand…") with no ellipsis at all — the native `title`
+     attribute (set alongside this in SectionItem.jsx) covers the rest via
+     a hover tooltip. */
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ed-sec-label:focus {
+  background: rgba(75, 9, 118, 0.06);
+}
+.ed-count {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  flex: none;
+}
+.ed-icon-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+.ed-icon-btn svg {
+  width: 13px;
+  height: 13px;
+}
+.ed-icon-btn:hover {
+  background: rgba(75, 9, 118, 0.08);
+  color: var(--navy);
+}
+.ed-icon-btn.danger:hover {
+  background: rgba(200, 50, 50, 0.1);
+  color: #c33232;
+}
+.ed-icon-btn[disabled] {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.ed-slidelist {
+  list-style: none;
+  overflow: hidden;
+}
+.ed-sec.collapsed .ed-slidelist {
+  display: none;
+}
+
+/* Milestone 9: asset library grid — a list of rows (not a slide list), so
+   it gets its own class rather than reusing .ed-slidelist. */
+.ed-asset-grid {
+  list-style: none;
+  overflow: hidden;
+}
+.ed-sec.collapsed .ed-asset-grid {
+  display: none;
+}
+.ed-asset-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 26px;
+}
+.ed-asset-row:hover {
+  background: rgba(75, 9, 118, 0.045);
+}
+.ed-asset-thumb {
+  flex: none;
+  width: 30px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(75, 9, 118, 0.15);
+  overflow: hidden;
+  padding: 0;
+  background: #fff;
+  cursor: pointer;
+}
+.ed-asset-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ed-asset-name {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.ed-slide-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 7px 26px;
+  cursor: pointer;
+  position: relative;
+  border-left: 2px solid transparent;
+}
+.ed-slide-row:hover {
+  background: rgba(75, 9, 118, 0.045);
+}
+.ed-slide-row.selected {
+  background: rgba(244, 193, 11, 0.14);
+  border-left-color: var(--blue);
+}
+.ed-slide-row.drag-over-top {
+  box-shadow: inset 0 2px 0 var(--blue);
+}
+.ed-slide-row.drag-over-bot {
+  box-shadow: inset 0 -2px 0 var(--blue);
+}
+.ed-slide-num {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  flex: none;
+  width: 16px;
+}
+.ed-slide-ic {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(75, 9, 118, 0.09);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ed-slide-ic svg {
+  width: 10px;
+  height: 10px;
+}
+.ed-slide-label {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.ed-slide-actions {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+}
+.ed-slide-row:hover .ed-slide-actions,
+.ed-slide-row.selected .ed-slide-actions {
+  display: flex;
+}
+.ed-slide-actions .ed-icon-btn {
+  width: 19px;
+  height: 19px;
+}
+.ed-slide-actions .ed-icon-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.ed-add-section {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--navy);
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+}
+.ed-add-section svg {
+  width: 13px;
+  height: 13px;
+}
+.ed-add-section:hover {
+  background: rgba(75, 9, 118, 0.05);
+}
+
+/* Milestone 9: "Nouvelle section" + "Depuis un modèle" share the same
+   bottom-pinned row instead of stacking as two full-width buttons. */
+.ed-sidebar-section-actions {
+  display: flex;
+  margin-top: auto;
+}
+.ed-sidebar-section-actions .ed-add-section {
+  flex: 1;
+  margin-top: 0;
+  justify-content: center;
+}
+.ed-sidebar-section-actions .ed-add-section + .ed-add-section {
+  border-left: 1px solid var(--line);
+}
+
+/* ---------- canvas ---------- */
+.ed-canvas-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: radial-gradient(circle at 50% 20%, #efe6f4 0%, #e6dced 100%);
+  overflow: hidden;
+}
+.ed-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+.ed-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 2px;
+}
+.ed-select {
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 8px;
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+}
+.ed-page-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ed-page-tab {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(75, 9, 118, 0.07);
+  color: var(--muted);
+}
+.ed-page-tab.active {
+  background: var(--navy);
+  color: #fff;
+}
+.ed-canvas-owner {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.ed-canvas-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  position: relative;
+  padding: 20px;
+  /* Milestone A (editor usability overhaul): the pasteboard's own clip
+     boundary — without this, a slide scaled beyond 100% (zoom-in) paints
+     outside this box's own layout size (a CSS transform never affects an
+     element's layout footprint, only its paint), bleeding into the
+     canvas toolbar above it and blocking clicks there. */
+  overflow: hidden;
+}
+.ed-canvas-scaler {
+  width: 1280px;
+  height: 720px;
+  transform-origin: center center;
+  box-shadow: 0 24px 60px -20px rgba(75, 9, 118, 0.45);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  flex: none;
+}
+.ed-canvas-frame {
+  width: 1280px;
+  height: 720px;
+  border: none;
+  display: block;
+  background: #fff;
+}
+
+.ed-zoom-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid rgba(75, 9, 118, 0.14);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 10px 24px -12px rgba(75, 9, 118, 0.35);
+  z-index: 5;
+}
+
+/* ---------- Milestone C: clean-view (Tab) exit affordance ---------- */
+.ed-clean-view-exit {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 12px 28px -10px rgba(75, 9, 118, 0.5);
+  z-index: 60;
+  transition: background 0.15s;
+}
+.ed-clean-view-exit:hover {
+  background: var(--navy-2);
+}
+.ed-clean-view-exit svg {
+  width: 13px;
+  height: 13px;
+}
+.ed-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+}
+.ed-zoom-btn:hover {
+  background: rgba(75, 9, 118, 0.08);
+}
+.ed-zoom-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-zoom-btn.on {
+  background: var(--blue);
+  color: var(--navy);
+}
+.ed-zoom-pct {
+  min-width: 46px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--navy);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ed-zoom-pct:hover {
+  background: rgba(75, 9, 118, 0.08);
+}
+
+.ed-empty {
+  margin: auto;
+  text-align: center;
+  max-width: 440px;
+  padding: 30px;
+}
+.ed-empty h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--navy);
+  margin-bottom: 10px;
+}
+.ed-empty p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+.ed-empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.ed-btn-lg {
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-btn-lg.primary {
+  background: var(--navy);
+  color: #fff;
+}
+.ed-btn-lg.primary:hover {
+  background: var(--navy-2);
+}
+.ed-btn-lg.ghost {
+  background: rgba(75, 9, 118, 0.08);
+  color: var(--navy);
+}
+.ed-btn-lg.ghost:hover {
+  background: rgba(75, 9, 118, 0.14);
+}
+.ed-btn-lg svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- welcome / presentation library ---------- */
+.ed-welcome {
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding: 40px 20px 60px;
+}
+.ed-welcome-hero {
+  text-align: center;
+  max-width: 520px;
+  margin: 10px auto 30px;
+}
+.ed-welcome-hero h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--navy);
+  margin-bottom: 10px;
+}
+.ed-welcome-hero p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+.ed-welcome-section {
+  width: 100%;
+  max-width: 960px;
+  margin-top: 10px;
+}
+.ed-welcome-section h3 {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ed-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 30px;
+}
+.ed-library-card {
+  position: relative;
+  text-align: left;
+  background: #fff;
+  border: 1px solid rgba(75, 9, 118, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font: inherit;
+  color: inherit;
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.ed-library-card:hover {
+  border-color: var(--navy);
+  box-shadow: 0 10px 24px -14px rgba(75, 9, 118, 0.35);
+  transform: translateY(-2px);
+}
+.ed-library-template {
+  border-style: dashed;
+}
+.ed-library-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(75, 9, 118, 0.08);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ed-library-card-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.ed-library-card-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ed-library-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.ed-library-card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.ed-library-card:hover .ed-library-card-delete {
+  opacity: 1;
+}
+.ed-library-card-delete:hover {
+  background: rgba(200, 40, 40, 0.12);
+  color: #c62828;
+}
+.ed-library-card-delete svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------- home dashboard (Milestone C) ---------- */
+.ed-home-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ed-home-toolbar h3 {
+  margin-bottom: 0;
+}
+.ed-home-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-home-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.ed-home-search svg {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+  flex: none;
+}
+.ed-home-search input {
+  border: none;
+  outline: none;
+  font-size: 12px;
+  width: 160px;
+  background: transparent;
+}
+.ed-home-sort {
+  font-size: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.ed-library-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(75, 9, 118, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ed-library-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ed-library-card-thumb .ed-library-card-icon {
+  width: 40px;
+  height: 40px;
+}
+.ed-library-card-thumb .ed-library-card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.ed-library-template-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(75, 9, 118, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.ed-library-template:hover .ed-library-template-hover {
+  opacity: 1;
+}
+
+.ed-library-card-menu-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navy);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+.ed-library-card:hover .ed-library-card-menu-btn,
+.ed-library-card-menu-btn:focus {
+  opacity: 1;
+}
+.ed-library-card-menu-btn:hover {
+  background: #fff;
+}
+.ed-library-card-menu-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-library-card-menu {
+  position: absolute;
+  top: 34px;
+  right: 8px;
+  z-index: 3;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 14px 32px -10px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  overflow: hidden;
+  padding: 4px;
+}
+.ed-library-card-menu button {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  color: var(--ink);
+}
+.ed-library-card-menu button:hover {
+  background: rgba(75, 9, 118, 0.08);
+}
+.ed-library-card-menu button.danger {
+  color: #c33232;
+}
+.ed-library-card-menu button.danger:hover {
+  background: rgba(220, 70, 70, 0.1);
+}
+
+.ed-library-card-rename-input {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  padding: 3px 6px;
+  outline: none;
+  width: 100%;
+}
+
+.ed-skeleton {
+  cursor: default;
+  min-height: 168px;
+  background: linear-gradient(90deg, rgba(75, 9, 118, 0.05) 25%, rgba(75, 9, 118, 0.1) 37%, rgba(75, 9, 118, 0.05) 63%);
+  background-size: 400% 100%;
+  animation: ed-skeleton-shimmer 1.4s ease infinite;
+}
+@keyframes ed-skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.ed-spinner {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ed-ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(75, 9, 118, 0.15);
+  border-top-color: var(--navy);
+  animation: edspin 0.8s linear infinite;
+}
+@keyframes edspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- scene panel (layers + inspector) ---------- */
+.ed-scene-panel {
+  background: #fff;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+}
+.ed-scene-panel.collapsed {
+  align-items: center;
+  padding-top: 8px;
+  overflow: visible;
+}
+.ed-scene-panel .ed-panel-toggle-btn-collapse {
+  position: sticky;
+  top: 4px;
+  align-self: flex-start;
+  margin: 4px 0 -4px 4px;
+  z-index: 3;
+  transform: rotate(-90deg);
+}
+.ed-scene-panel.collapsed .ed-panel-toggle-btn {
+  transform: rotate(90deg);
+}
+.ed-layers {
+  border-bottom: 1px solid var(--line);
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+.ed-layers.collapsed {
+  flex: none;
+  min-height: 0;
+}
+.ed-layers-head,
+.ed-inspector-head {
+  padding: 10px 12px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+  border-bottom: 1px solid var(--line);
+}
+/* .ed-layers-head is now a <button> (Milestone C collapse toggle) —
+   .ed-inspector-head stays a plain <div>, unaffected by these resets. */
+button.ed-layers-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+}
+button.ed-layers-head svg {
+  width: 11px;
+  height: 11px;
+  transition: transform 0.15s;
+}
+.ed-layers.collapsed .ed-layers-head svg {
+  transform: rotate(-90deg);
+}
+.ed-layers-empty,
+.ed-inspector-empty {
+  padding: 14px 12px;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-style: italic;
+}
+.ed-layers-list {
+  list-style: none;
+  overflow-y: auto;
+}
+.ed-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  font-size: 11.5px;
+}
+.ed-layer-row:hover {
+  background: rgba(75, 9, 118, 0.045);
+}
+.ed-layer-row.selected {
+  background: rgba(244, 193, 11, 0.14);
+  border-left-color: var(--blue);
+}
+.ed-layer-type {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.ed-layer-type svg {
+  width: 11px;
+  height: 11px;
+}
+.ed-layer-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.ed-layer-actions {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+}
+.ed-layer-row:hover .ed-layer-actions,
+.ed-layer-row.selected .ed-layer-actions {
+  display: flex;
+}
+.ed-layer-actions .ed-icon-btn {
+  width: 18px;
+  height: 18px;
+}
+.ed-layer-actions .ed-icon-btn svg {
+  width: 10px;
+  height: 10px;
+}
+.ed-inspector {
+  flex: none;
+}
+.ed-inspector-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Milestone C: Section (ObjectInspector.tsx) ---------- */
+.ed-inspector-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ed-inspector-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 9px;
+  background: rgba(75, 9, 118, 0.03);
+  color: var(--navy);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ed-inspector-section-head:hover {
+  background: rgba(75, 9, 118, 0.07);
+}
+.ed-inspector-section-head svg {
+  width: 10px;
+  height: 10px;
+  transition: transform 0.15s;
+}
+.ed-inspector-section.collapsed .ed-inspector-section-head svg {
+  transform: rotate(-90deg);
+}
+.ed-inspector-section-body {
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+}
+.ed-inspector-empty-hint {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 2px 4px;
+}
+.ed-empty-palette {
+  gap: 5px;
+}
+.ed-empty-palette-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex: none;
+}
+.ed-inspector-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-inspector-row label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  flex: none;
+}
+.ed-inspector-row input[type='number'] {
+  width: 0;
+  flex: 1;
+  font-size: 11.5px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+}
+.ed-inspector-row input[type='color'] {
+  width: 30px;
+  height: 26px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+  background: none;
+  cursor: pointer;
+}
+.ed-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.ed-icon-grid-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--navy);
+  padding: 6px;
+}
+.ed-icon-grid-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-icon-grid-btn:hover {
+  background: rgba(75, 9, 118, 0.06);
+}
+.ed-icon-grid-btn.on {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--navy);
+}
+.ed-inspector-row .ed-btn {
+  flex: 1;
+  justify-content: center;
+}
+.ed-inspector-layer-pos {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.ed-align-row {
+  justify-content: space-between;
+}
+.ed-align-row .ed-icon-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.ed-align-row .ed-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.ed-layer-row.grouped {
+  border-left-color: rgba(75, 9, 118, 0.3);
+}
+.ed-layer-group-mark {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.ed-layer-group-mark svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* ---------- notes drawer ---------- */
+.ed-notes {
+  background: #fff;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  animation: ed-slide-in 0.2s ease;
+}
+@keyframes ed-slide-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.ed-notes-head {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ed-notes-head svg {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+}
+.ed-notes-area {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.ed-node-meta {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ed-node-meta label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 4px;
+}
+.ed-node-meta input,
+.ed-node-meta select {
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+  width: 100%;
+}
+.ed-btn.small {
+  padding: 5px 9px;
+  font-size: 10.5px;
+}
+.ed-chart-kind-row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.ed-chart-kind-row .ed-btn.small {
+  padding: 5px 7px;
+}
+.ed-chart-kind-row .ed-btn.small svg {
+  width: 12px;
+  height: 12px;
+}
+.ed-bg-scope-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ed-bg-scope-row .ed-btn {
+  flex: 1;
+  justify-content: center;
+}
+.ed-bg-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ed-bg-kind-row {
+  display: flex;
+  gap: 4px;
+}
+.ed-bg-kind-row .ed-btn {
+  flex: 1;
+  justify-content: center;
+}
+.ed-gradient-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-gradient-row input[type='color'] {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.ed-gradient-row input[type='number'] {
+  width: 0;
+  flex: 1;
+  font-size: 11px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+}
+.ed-gradient-preview {
+  flex: 1;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.ed-bg-image-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-bg-image-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background-size: cover;
+  background-position: center;
+  flex: none;
+}
+.ed-theme-token-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ed-theme-token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-theme-token-row input[type='color'] {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.ed-theme-token-name {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink);
+}
+.ed-palette-import {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ed-palette-import-area {
+  width: 100%;
+  min-height: 60px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+  resize: vertical;
+}
+
+.ed-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ed-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(75, 9, 118, 0.15);
+  cursor: pointer;
+  flex: none;
+  transition: transform 0.1s, border-color 0.15s;
+}
+.ed-swatch:hover {
+  transform: scale(1.1);
+}
+.ed-swatch.active {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(75, 9, 118, 0.18);
+}
+.ed-swatch-custom {
+  width: 22px !important;
+  height: 22px;
+  padding: 0 !important;
+  border: 1.5px solid rgba(75, 9, 118, 0.15) !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  flex: none;
+}
+
+/* ---------- chart/table Inspector grid editors (Milestone 7) ---------- */
+.ed-grid-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+.ed-grid-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ed-grid-editor-row input[type='text'],
+.ed-grid-editor-row input[type='number'] {
+  width: 0;
+  flex: 1;
+  font-size: 11px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+}
+.ed-grid-editor-row .ed-icon-btn {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.ed-grid-editor-row .ed-chart-row-swatch {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* ---------- modals ---------- */
+.ed-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 17, 48, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.ed-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 460px;
+  max-width: 92vw;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.ed-modal h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--navy);
+  margin-bottom: 14px;
+}
+.ed-layout-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.ed-layout-opt:hover {
+  border-color: var(--blue);
+  background: rgba(244, 193, 11, 0.06);
+}
+.ed-layout-opt .ed-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.ed-layout-opt .ed-ic svg {
+  width: 16px;
+  height: 16px;
+}
+.ed-lo-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  display: block;
+}
+.ed-lo-desc {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 1px;
+  display: block;
+}
+.ed-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: var(--muted);
+}
+
+/* ---------- auth (sign in / sign up) — full routed pages, not a modal ---------- */
+.ed-auth-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 20%, #efe6f4 0%, #e6dced 100%);
+  padding: 20px;
+}
+.ed-auth-card {
+  width: 380px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 26px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.35);
+}
+.ed-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 18px;
+}
+.ed-auth-card h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--navy);
+  margin-bottom: 18px;
+}
+.ed-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+.ed-auth-field label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.ed-auth-field input[type='email'],
+.ed-auth-field input[type='password'],
+.ed-auth-field input[type='text'] {
+  width: 100%;
+  font-size: 12.5px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+}
+.ed-auth-field input:focus {
+  border-color: var(--blue);
+}
+.ed-auth-password-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-auth-password-row input {
+  flex: 1;
+  min-width: 0;
+}
+.ed-auth-error {
+  font-size: 10.5px;
+  color: #c33232;
+}
+.ed-auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+.ed-auth-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  text-align: center;
+}
+.ed-auth-links a {
+  font-size: 11.5px;
+  color: var(--navy);
+  text-decoration: underline;
+}
+.ed-account-btn-email {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ed-topbar .ed-account-btn-email {
+  max-width: 90px;
+}
+
+/* Milestone D (v2 editable overview graph). */
+.ed-overview-editor {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: radial-gradient(circle at 50% 20%, #efe6f4 0%, #e6dced 100%);
+}
+.ed-overview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.ed-overview-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.ed-overview-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+  display: flex;
+}
+/* Fixed-aspect-ratio wrapper (matches the 1280x720 viewBox exactly) sized
+   to fit the stage — both the SVG and the edge-toolbar overlay are
+   percentage-positioned children of *this*, not of .ed-overview-stage
+   itself, so OverviewEditor.tsx's left/top percentage math always lines up
+   with the actually-rendered SVG box regardless of window size/aspect. */
+.ed-overview-canvas {
+  position: relative;
+  aspect-ratio: 1280 / 720;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  margin: auto;
+}
+.ed-overview-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ed-overview-node-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  text-align: center;
+  font-family: var(--body);
+  pointer-events: none;
+}
+.ed-overview-node-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ed-overview-node-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.ed-overview-node-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ed-overview-edge-toolbar {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 3px;
+  background: #241130;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.ed-overview-edge-toolbar .ed-icon-btn {
+  color: #fff;
+  font-size: 10px;
+  width: 26px;
+  height: 26px;
+}
+.ed-overview-edge-toolbar .ed-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ed-overview-lane rect {
+  transition: stroke 0.12s ease, stroke-width 0.12s ease;
+}
+.ed-overview-lane.drop-target rect {
+  filter: drop-shadow(0 0 10px rgba(244, 193, 11, 0.45));
+}
+.ed-overview-drop-line {
+  stroke: #f4c10b;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 7;
+  pointer-events: none;
+}
+
+/* Cards animate to their new slot on drop; the one actively being
+   dragged is excluded (it must track the cursor with zero lag) and gets
+   its own elevated, no-transition styling instead. */
+.ed-overview-node {
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ed-overview-node:hover:not(.dragging) rect {
+  filter: drop-shadow(0 2px 6px rgba(60, 20, 80, 0.18));
+}
+.ed-overview-node.dragging {
+  transition: none;
+}
+.ed-overview-node.dragging rect {
+  filter: drop-shadow(0 14px 22px rgba(36, 17, 48, 0.35));
+}
+
+/* Set on <body> for the duration of a card drag: keeps the grabbing
+   cursor and blocks text-selection everywhere on the page, since a fast
+   drag routinely outruns the node and passes over sibling toolbar/DOM
+   elements that would otherwise flash their own cursor/selection. */
+body.ed-overview-dragging,
+body.ed-overview-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* Milestone C (v2 new-from-scratch + theming): starter/theme picker modal. */
+.ed-new-presentation-modal {
+  width: 520px;
+}
+.ed-np-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+.ed-np-starter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ed-layout-opt.on {
+  border-color: var(--blue);
+  background: rgba(244, 193, 11, 0.1);
+}
+.ed-np-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.ed-np-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ed-np-swatch:hover {
+  border-color: var(--blue);
+}
+.ed-np-swatch.on {
+  border-color: var(--blue);
+  background: rgba(244, 193, 11, 0.1);
+}
+.ed-np-swatch-colors {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+  height: 22px;
+}
+.ed-np-swatch-colors span {
+  flex: 1;
+}
+.ed-np-swatch-label {
+  font-size: 9.5px;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Milestone A (v2 diagram builder): gallery modal with live thumbnails. */
+.ed-diagram-gallery-modal {
+  width: 760px;
+}
+.ed-diagram-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.ed-diagram-gallery-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ed-diagram-gallery-item:hover {
+  border-color: var(--blue);
+  background: rgba(244, 193, 11, 0.06);
+}
+.ed-diagram-thumb {
+  overflow: hidden;
+  position: relative;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  pointer-events: none;
+}
+.ed-diagram-thumb-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+.ed-diagram-gallery-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+.ed-diagram-gallery-title svg {
+  width: 12px;
+  height: 12px;
+}
+.ed-diagram-gallery-desc {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* Milestone 10: shortcuts help modal — wider than the default .ed-modal,
+   grouped tables instead of the layout-picker's button-list shape. */
+.ed-shortcuts-modal {
+  width: 560px;
+}
+.ed-shortcuts-group {
+  margin-bottom: 16px;
+}
+.ed-shortcuts-group-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ed-shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ed-shortcuts-table td {
+  padding: 5px 0;
+  font-size: 12px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.ed-shortcuts-table td:first-child {
+  width: 190px;
+  white-space: nowrap;
+}
+.ed-shortcuts-table kbd {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--navy);
+  background: rgba(75, 9, 118, 0.08);
+  border: 1px solid rgba(75, 9, 118, 0.15);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+/* ---------- toast ---------- */
+.ed-toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 200;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.4);
+  max-width: 360px;
+}
+.ed-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.ed-toast.error {
+  background: #a02a2a;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --sidebar-w: 230px;
+    --notes-w: 240px;
+    --scene-w: 200px;
+  }
+  .ed-title-input {
+    width: 130px;
+  }
+}

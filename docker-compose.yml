@@ -1,0 +1,28 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      PORT: 4000
+      MONGO_URI: mongodb://mongo:27017/preseditor
+      COOKIE_SECRET: ${COOKIE_SECRET:-dev-only-insecure-secret-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      # Defaults to development so the session cookie isn't marked Secure
+      # (which requires HTTPS) — set NODE_ENV=production and put a TLS
+      # reverse proxy (e.g. Caddy) in front for a real deployment.
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "4000:4000"
+
+volumes:
+  mongo_data:

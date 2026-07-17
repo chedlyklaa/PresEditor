@@ -1,0 +1,1951 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KubePilot — Soutenance de stage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --inv-ns:11.85;
+  --navy:#4b0976;
+  --navy-2:#461665;
+  --blue:#f4c10b;
+  --blue-dark:#edd672;
+  --teal:#f4c10b;
+  --teal-dim:#8c6aa3;
+  --bg-light:#fdfafc;
+  --ink:#fdfafc;
+  --muted:#dac2e6;
+  --card:#461665;
+  --flag:#edd672;
+  --flag-soft:#fff8bb;
+  --accent-purple:#8c6aa3;
+  --display: 'Fraunces', serif;
+  --body: 'Inter', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{width:100%; height:100%; background:var(--navy); overflow:hidden; font-family:var(--body); -webkit-font-smoothing:antialiased;}
+button{font-family:inherit; cursor:pointer;}
+
+#viewport{position:fixed; inset:0; overflow:hidden; background:radial-gradient(circle at 50% 30%, #5a1a8a 0%, #2d0a4a 75%);}
+#stage{position:absolute; top:50%; left:50%; width:1280px; height:720px; transform-origin:center center;}
+
+#graph-chrome{position:absolute; inset:0; z-index:1; opacity:1; transition:opacity .5s ease; pointer-events:none;}
+#stage.is-detail #graph-chrome{opacity:0;}
+.lane{position:absolute; top:46px; bottom:46px; border-radius:22px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);}
+.lane-label{position:absolute; top:14px; left:0; width:100%; text-align:center; font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#dac2e6; font-weight:500;}
+#edges{position:absolute; inset:0; overflow:visible;}
+.edge{fill:none; stroke:#8c6aa3; stroke-width:1.6; opacity:.45;}
+.edge-flow{fill:none; stroke:var(--teal); stroke-width:1.6; stroke-dasharray:6 10; opacity:.85; animation:flow 2.6s linear infinite;}
+@keyframes flow{ to{ stroke-dashoffset:-160; } }
+.map-title{position:absolute; left:50%; top:6px; transform:translateX(-50%); text-align:center; color:#fff;}
+.map-title .eyebrow{color:var(--teal); font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;}
+.map-title h2{font-family:var(--display); font-weight:700; font-size:21px; margin-top:2px;}
+
+.slide{
+  position:absolute; left:0; top:0; width:1280px; height:720px;
+  background:var(--bg-light);
+  transform: translate(var(--nx,0px), var(--ny,0px)) scale(var(--ns,1));
+  transition: transform .85s cubic-bezier(.16,1,.3,1), opacity .4s ease, box-shadow .85s ease;
+  border-radius:16px;
+  overflow:hidden;
+  z-index:2;
+  box-shadow:0 18px 40px -12px rgba(0,0,0,.55);
+  cursor:pointer;
+}
+.slide.active{ transform:translate(0,0) scale(1); border-radius:0; box-shadow:none; cursor:default; z-index:5; }
+#stage.is-detail .slide:not(.active){ opacity:0; pointer-events:none; }
+.slide-light{ background:var(--slide-bg, var(--bg-light)); color:var(--navy); --ink:#461665; --muted:#8c6aa3; --card:#ffffff; --blue-dark:#8a6a0a; }
+.slide-dark{ background:var(--navy); color:#fff; }
+
+.slide::before{
+  content:'';
+  position:absolute; inset:-10%;
+  background-image:url('bigapps_logo-removebg.png');
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:58% auto;
+  filter:blur(12px);
+  opacity:0;
+  transition:opacity .5s ease;
+  z-index:0;
+  pointer-events:none;
+}
+.slide.active::before{ opacity:.32; }
+.slide.active.logo-hero::before{ background-size:78% auto; opacity:.48; filter:blur(6px); }
+
+.node-face{position:absolute; z-index:1; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(var(--inv-ns)*8px); opacity:1; transition:opacity .3s ease; padding:calc(var(--inv-ns)*6px);}
+.slide.active .node-face{opacity:0;}
+.node-num{position:absolute; top:calc(var(--inv-ns)*8px); left:calc(var(--inv-ns)*10px); font-family:var(--mono); font-size:calc(var(--inv-ns)*9px); color:var(--accent,#8c6aa3); opacity:.85;}
+.node-ic{width:calc(var(--inv-ns)*30px); height:calc(var(--inv-ns)*30px); border-radius:50%; background:var(--accent,#f4c10b); color:#fff; display:flex; align-items:center; justify-content:center; transition:transform .25s ease;}
+.node-ic svg{width:calc(var(--inv-ns)*15px); height:calc(var(--inv-ns)*15px);}
+.node-lbl{font-family:var(--display); font-weight:700; font-size:calc(var(--inv-ns)*10.5px); text-align:center; line-height:1.15; max-width:calc(var(--inv-ns)*108px); color:var(--ink);}
+.slide-dark .node-lbl{color:#fff;}
+.slide:hover:not(.active) .node-ic{transform:scale(1.18);}
+.slide:hover:not(.active){box-shadow:0 22px 48px -10px rgba(0,0,0,.6);}
+.lane{transition:box-shadow .5s ease, border-color .5s ease, background .5s ease;}
+.lane.lane-shine{box-shadow:0 0 28px 6px rgba(244,193,11,.35), inset 0 0 18px rgba(244,193,11,.08); border-color:rgba(244,193,11,.7) !important; animation:laneGlow 2s ease-in-out infinite;}
+.lane-label.lane-label-shine{color:#f4c10b !important; text-shadow:0 0 10px rgba(244,193,11,.5);}
+@keyframes laneGlow{
+  0%,100%{box-shadow:0 0 22px 4px rgba(244,193,11,.3), inset 0 0 14px rgba(244,193,11,.06);}
+  50%{box-shadow:0 0 36px 10px rgba(244,193,11,.45), inset 0 0 22px rgba(244,193,11,.12);}
+}
+
+.detail-content{position:absolute; z-index:1; inset:0; opacity:0; transition:opacity .4s ease .15s; pointer-events:none;}
+.slide.active .detail-content{opacity:1; pointer-events:auto;}
+.pad{position:absolute; inset:0; padding:56px 64px; display:flex; flex-direction:column; justify-content:center;}
+
+.pages-wrap{position:absolute; inset:0;}
+.detail-page{position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .35s ease;}
+.detail-page.page-active{opacity:1; pointer-events:auto;}
+.page-dots{position:absolute; left:50%; bottom:26px; transform:translateX(-50%); display:flex; gap:6px; z-index:2;}
+.page-dot{width:6px; height:6px; border-radius:50%; background:rgba(75,9,118,.22); transition:background .3s, transform .3s;}
+.page-dot.now{background:var(--accent,#8c6aa3); transform:scale(1.4);}
+
+[data-anim]{opacity:0; transform:translateY(18px); transition:opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1); transition-delay:calc(var(--d,0) * 70ms);}
+.slide.content-in [data-anim]{opacity:1; transform:none;}
+
+.eyebrow{font-family:var(--mono); font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:500;}
+.eyebrow-light{color:var(--navy);}
+.eyebrow-dark{color:var(--teal);}
+h1.title{font-family:var(--display); font-weight:700; font-size:38px; line-height:1.08; margin-top:8px; letter-spacing:-0.01em;}
+h1.title-light{color:var(--ink);}
+h1.title-dark{color:#fff;}
+.lede{font-family:var(--body); font-size:15.5px; line-height:1.55; color:var(--muted);}
+.lede-dark{color:#dac2e6;}
+
+.card{background:var(--card); border-radius:16px; padding:22px; box-shadow:0 14px 32px -16px rgba(75,9,118,.18);}
+.card-dark{background:var(--navy); color:#fff; box-shadow:0 14px 30px -16px rgba(75,9,118,.4); border:1px solid rgba(255,255,255,.08);}
+.icon-circle{width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; box-shadow:0 8px 18px -6px rgba(75,9,118,.28);}
+.icon-circle svg{width:24px; height:24px;}
+.bg-blue{background:var(--blue);}
+.bg-teal{background:#8c6aa3;}
+.bg-navy{background:var(--navy);}
+.bg-flag{background:var(--flag);}
+
+.grid{display:grid; gap:18px;}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g5{grid-template-columns:repeat(5,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+.g6{grid-template-columns:repeat(6,1fr);}
+
+.flag-text{font-family:var(--body); font-style:italic; font-size:11.5px; color:#8a6a0a; text-align:center;}
+.flag-text-on-dark{color:var(--flag-soft);}
+
+.shot-placeholder{border:2px dashed rgba(75,9,118,.25); border-radius:16px; background:repeating-linear-gradient(135deg, rgba(75,9,118,.04) 0 10px, rgba(75,9,118,.08) 10px 20px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; color:rgba(75,9,118,.5);}
+.shot-ic{width:36px; height:36px; color:rgba(75,9,118,.4);}
+.shot-ic svg{width:100%; height:100%;}
+.shot-lbl{font-family:var(--display); font-weight:700; font-size:13px; color:rgba(75,9,118,.65);}
+.shot-sub{font-size:10.5px; font-style:italic; color:rgba(75,9,118,.45); text-align:center; padding:0 18px; line-height:1.4;}
+
+.chrome-footer{position:absolute; left:64px; right:64px; bottom:26px; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em;}
+.chrome-footer span{opacity:.55;}
+.slide-light .chrome-footer{color:#8c6aa3;}
+.slide-dark .chrome-footer{color:#8c6aa3;}
+
+.pulse-wrap{position:absolute; left:64px; bottom:50px; width:160px; height:22px; opacity:.55;}
+.slide-dark .pulse-wrap{opacity:.7;}
+.pulse-wrap svg{width:100%; height:100%;}
+.pulse-line{fill:none; stroke:var(--teal); stroke-width:2; stroke-linecap:round; stroke-dasharray:240; stroke-dashoffset:240; animation:draw 3.2s linear infinite;}
+@keyframes draw{ to{ stroke-dashoffset:-240; } }
+
+#ui-progress{position:fixed; top:0; left:0; height:3px; background:var(--teal); z-index:50; transition:width .4s ease, opacity .3s;}
+#ui-counter{position:fixed; right:22px; bottom:18px; font-family:var(--mono); font-size:12px; color:#dac2e6; z-index:50; background:rgba(70,22,101,.65); padding:5px 10px; border-radius:20px; backdrop-filter:blur(4px); transition:opacity .3s;}
+#ui-arrows{position:fixed; inset:0; z-index:40; display:flex; justify-content:space-between; align-items:center; pointer-events:none;}
+.ui-arrow{pointer-events:auto; width:48px; height:48px; border-radius:50%; border:none; background:rgba(255,255,255,.08); color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center; margin:0 14px; transition:background .2s, opacity .3s;}
+.ui-arrow:hover{background:rgba(255,255,255,.2);}
+#ui-hint{position:fixed; left:22px; bottom:18px; font-family:var(--mono); font-size:11px; color:#8c6aa3; z-index:50; opacity:.7; transition:opacity .3s;}
+#ui-dots{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:7px; z-index:50; transition:opacity .3s;}
+.ui-dot{width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.25); transition:background .3s, transform .3s; cursor:pointer;}
+.ui-dot.done{background:var(--teal);}
+.ui-dot.now{background:#fff; transform:scale(1.3);}
+#mapBtn{position:fixed; top:18px; left:22px; z-index:50; display:flex; align-items:center; gap:8px; background:rgba(70,22,101,.65); color:#dac2e6; border:none; border-radius:20px; padding:8px 16px 8px 12px; font-family:var(--mono); font-size:11.5px; backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity .3s;}
+#mapBtn svg{width:14px; height:14px;}
+body.in-detail #mapBtn{opacity:1; pointer-events:auto;}
+body.in-detail #ui-progress, body.in-detail #ui-counter, body.in-detail #ui-arrows, body.in-detail #ui-dots{opacity:1;}
+body:not(.in-detail) #ui-progress, body:not(.in-detail) #ui-counter, body:not(.in-detail) #ui-arrows, body:not(.in-detail) #ui-dots{opacity:0; pointer-events:none;}
+body.in-detail #ui-hint .map-hint{display:none;}
+body:not(.in-detail) #ui-hint .detail-hint{display:none;}
+
+@media(max-width:760px){ #ui-hint{display:none;} }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="stage">
+    <div id="graph-chrome"></div>
+  </div>
+</div>
+
+<button id="mapBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M8.5 7.5 10.5 16M15.5 7.5 13.5 16M9 6h6"/></svg> Vue d'ensemble</button>
+<div id="ui-progress" style="width:0%"></div>
+<div id="ui-counter">01 / 18</div>
+<div id="ui-hint"><span class="map-hint">Cliquez sur une étape du graphe pour commencer</span><span class="detail-hint">← → pour naviguer · Échap pour la vue d'ensemble · F plein écran</span></div>
+<div id="ui-dots"></div>
+<div id="ui-arrows">
+  <button class="ui-arrow" id="prevBtn" aria-label="Précédent">‹</button>
+  <button class="ui-arrow" id="nextBtn" aria-label="Suivant">›</button>
+</div>
+
+<script>
+const ICONS = {
+  eye:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.7-4.4 6.3-6.6 10-6.6s7.3 2.2 10 6.6c-2.7 4.4-6.3 6.6-10 6.6S4.7 16.4 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg>`,
+  brain:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3a3 3 0 0 0-3 3v1a3 3 0 0 0-1 5.8V14a3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-2-3Z"/><path d="M15 3a3 3 0 0 1 3 3v1a3 3 0 0 1 1 5.8V14a3 3 0 0 1-3 3 3 3 0 0 1-3-3V6a3 3 0 0 1 2-3Z"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 7.7 8 9 4.5-1.3 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+  sync:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>`,
+  lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+  chart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M7 19V9"/><path d="M12 19V5"/><path d="M17 19v-7"/></svg>`,
+  clipboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>`,
+  robot:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="9" width="14" height="10" rx="2.5"/><path d="M12 5v4M9 13v2M15 13v2"/><circle cx="12" cy="3.4" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+  sitemap:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/><path d="M12 7v5M12 12H6v5M12 12h6v5"/></svg>`,
+  hands:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13c1.5-2 3-2.5 4.5-1l2 1.6"/><path d="M21 13c-1.5-2-3-2.5-4.5-1l-3.6 3"/><path d="M7 19c2 1.4 4 1.6 6 .2l5-4"/><path d="M3 13l3 4 3-1.4"/></svg>`,
+  building:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01"/><path d="M10 21v-3h4v3"/></svg>`,
+  gavel:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 7 7 7"/><path d="m5 11 5-5 4 4-5 5z"/><path d="M3 21h7"/><path d="m13 11 7 7"/></svg>`,
+  balance:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v17M7 20h10"/><path d="M5 7h6M3 7l2-4 2 4M19 7h-6M17 7l2-4 2 4"/><path d="M3 7c0 1.7 1.3 3 3 3s3-1.3 3-3M15 7c0 1.7 1.3 3 3 3s3-1.3 3-3"/></svg>`,
+  database:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v14c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>`,
+  network:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.2V13M12 13 6.5 17M12 13l5.5 4"/></svg>`,
+  route:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4h-.5"/></svg>`,
+  warning:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20Z"/><path d="M12 9v5M12 17h.01"/></svg>`,
+  bolt:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>`,
+  question:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.2 1-1.2 2"/><path d="M12 17h.01"/></svg>`,
+  user:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>`,
+  camera:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2h6l2 2h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.2"/></svg>`,
+  server:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r=".6" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>`,
+};
+function icon(name, cls){ return `<span class="${cls}">${ICONS[name]}</span>`; }
+function iconCircle(name, bg){ return `<div class="icon-circle ${bg}" style="color:#fff">${ICONS[name]}</div>`; }
+function shotPlaceholder(label, h){
+  return `<div class="shot-placeholder" style="height:${h}px;">
+    <div class="shot-ic">${ICONS.camera}</div>
+    <div class="shot-lbl">Capture d'écran</div>
+    <div class="shot-sub">${label}</div>
+  </div>`;
+}
+
+/* ============================================================
+   SLIDE BUILDERS
+   ============================================================ */
+const S = []; // each item: {cls:'slide-light'|'slide-dark', html:'...'}
+
+/* ---- 1. TITRE ---- */
+S.push({cls:'slide-dark logo-hero', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-dark" data-anim style="--d:0">PROJET DE FIN DE STAGE</div>
+  <h1 style="font-family:var(--display); font-weight:900; font-size:92px; color:#fff; line-height:1; margin:10px 0 18px;" data-anim style="--d:1">KubePilot</h1>
+  <div class="lede lede-dark" style="font-size:19px; font-style:italic; max-width:640px;" data-anim style="--d:2">Plateforme multi-agents auto-réparatrice pour Kubernetes</div>
+  <div style="width:280px; height:1.5px; background:var(--teal); margin:30px 0 26px;" data-anim style="--d:3"></div>
+  <div class="lede lede-dark" style="font-size:15px; line-height:1.9;" data-anim style="--d:4">
+    <b style="color:#dac2e6">Présenté par :</b> Mohamed Chedly KLAA<br>
+    <b style="color:#dac2e6">Encadrant :</b> M. Romdhane<br>
+    <b style="color:#dac2e6">Entreprise d'accueil :</b> BigApps
+  </div>
+</div>
+<div style="position:absolute; right:70px; top:50%; transform:translateY(-50%);" data-anim style="--d:3">
+  <div id="title-pulse-orb" style="width:170px;height:170px;border-radius:50%;background:var(--blue); display:flex;align-items:center;justify-content:center; box-shadow:0 0 0 0 rgba(244,193,11,.4);">
+    ${icon('sitemap','')}
+    <style>#title-pulse-orb svg{width:78px;height:78px;color:#fff}</style>
+  </div>
+</div>
+`});
+
+/* ---- 2. REMERCIEMENTS ---- */
+function thanksCard(i, imgSrc, imgStyle, title, text){
+  return `<div class="card" data-anim style="--d:${i}; text-align:center; padding:30px 22px;">
+    <div style="display:flex; justify-content:center; margin-bottom:18px;">
+      <img src="${imgSrc}" style="width:72px; height:72px; ${imgStyle}; display:block;">
+    </div>
+    <div style="font-family:var(--display); font-weight:700; font-size:19px; color:var(--ink); margin-bottom:10px;">${title}</div>
+    <div class="lede" style="font-size:12.5px;">${text}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">AVANT DE COMMENCER</div>
+  <h1 class="title title-light" data-anim style="--d:1">Remerciements</h1>
+  <div class="grid g3" style="margin-top:40px;">
+    ${thanksCard(2,'bigapps_logo-removebg.png','object-fit:contain; border-radius:12px; background:rgba(75,9,118,.06); padding:8px; box-sizing:border-box;','BigApps',"Pour l'accueil, la confiance accordée et les ressources mises à disposition durant ce stage.")}
+    ${thanksCard(3,'romdhane-glaa.jpg','object-fit:cover; border-radius:50%;','M. Romdhane',"Mon encadrant, pour son suivi régulier, ses conseils techniques et sa disponibilité tout au long du projet.")}
+    ${thanksCard(4,'team.jpg','object-fit:cover; border-radius:12px;',"L'équipe BigApps","Tous les collègues qui ont contribué, de près ou de loin, à l'avancement de ce travail.")}
+  </div>
+  <div class="lede" style="text-align:center; font-style:italic; margin-top:30px;" data-anim style="--d:5">Et à toutes les personnes qui ont, à un moment ou un autre, apporté leur aide ou leur soutien à ce projet.</div>
+</div>
+`});
+
+/* ---- 3. SOMMAIRE ---- */
+function sommaireItem(i, n, label, color){
+  return `<div data-anim style="--d:${i}; display:flex; align-items:center; gap:16px; margin-bottom:26px;">
+    <div style="width:38px;height:38px;border-radius:50%; background:${color}; color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:700; font-size:16px; flex:none;">${n}</div>
+    <div style="font-size:15.5px; color:var(--ink);">${label}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PLAN DE LA PRÉSENTATION</div>
+  <h1 class="title title-light" data-anim style="--d:1">Sommaire</h1>
+  <div class="grid g2" style="margin-top:46px; column-gap:60px;">
+    <div>
+      ${sommaireItem(2,1,'Contexte et problématique','var(--blue)')}
+      ${sommaireItem(3,2,'Concepts clés : agents, DevOps, Kubernetes','var(--blue)')}
+      ${sommaireItem(4,3,"Le rôle de l'expert Kubernetes",'var(--blue)')}
+      ${sommaireItem(5,4,'Architecture globale de KubePilot','var(--blue)')}
+    </div>
+    <div>
+      ${sommaireItem(6,5,"Partie réactive : le pipeline d'agents autonome",'#8c6aa3')}
+      ${sommaireItem(7,6,'Partie active : tableau de bord, API et gouvernance','#8c6aa3')}
+      ${sommaireItem(8,7,"Méthodologie d'évaluation et résultats",'#8c6aa3')}
+      ${sommaireItem(9,8,'Limites, perspectives et conclusion','#8c6aa3')}
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 4. CONTEXTE ---- */
+function painCard(i,iconName,title,text){
+  return `<div class="card" data-anim style="--d:${i}; text-align:center; padding:20px 14px;">
+    <div style="display:flex; justify-content:center; margin-bottom:12px;">${iconCircle(iconName,'bg-blue')}</div>
+    <div style="font-family:var(--display); font-weight:700; font-size:14.5px; color:var(--ink); margin-bottom:8px;">${title}</div>
+    <div class="lede" style="font-size:11.5px;">${text}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONTEXTE</div>
+  <h1 class="title title-light" data-anim style="--d:1">Pourquoi KubePilot ?</h1>
+  <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:40px; margin-top:30px;">
+    <div>
+      <div class="lede" style="font-size:15px;" data-anim style="--d:2">Les clusters Kubernetes en production génèrent en continu des incidents : pods en crash, ressources saturées, échecs de scheduling, dérives de configuration. Leur résolution repose aujourd'hui presque entièrement sur l'expertise humaine, disponible 24/7 en théorie, limitée en pratique.</div>
+      <div class="grid g3" style="margin-top:26px;">
+        ${painCard(3,'warning','Temps de réaction','Délai entre incident et intervention humaine, surtout hors heures ouvrées.')}
+        ${painCard(4,'clipboard','Charge répétitive','Une large part des incidents sont récurrents et suivent des schémas connus.')}
+        ${painCard(5,'lock','Risque opérationnel','Toute action manuelle est une source potentielle d\'erreur.')}
+      </div>
+    </div>
+    <div class="card card-dark" style="color:#fff;" data-anim style="--d:3">
+      <div class="eyebrow eyebrow-dark" style="margin-bottom:10px;">OBJECTIF DU PROJET</div>
+      <div style="font-size:14px; line-height:1.6; color:#dac2e6;">Concevoir une plateforme multi-agents capable de surveiller un cluster Kubernetes, diagnostiquer les anomalies et exécuter de manière autonome — ou semi-autonome — les actions correctives, tout en respectant les contraintes de sécurité et de gouvernance d'un environnement de production.</div>
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 5. AGENT DEFINITION ---- */
+function typeCard(i,iconName,title,text){
+  return `<div class="card" data-anim style="--d:${i};">
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">${iconCircle(iconName,'bg-teal')}<div style="font-family:var(--display); font-weight:700; font-size:16px; color:var(--ink);">${title}</div></div>
+    <div class="lede" style="font-size:12.5px;">${text}</div>
+  </div>`;
+}
+const agentPage1 = `
+<div class="pad" style="padding-top:42px; padding-bottom:30px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONCEPT CLÉ N°1</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:28px;">Qu'est-ce qu'un agent IA ?</h1>
+  <div class="card" style="background:var(--blue); color:var(--navy); display:flex; align-items:center; gap:16px; margin-top:14px; padding:14px 18px;" data-anim style="--d:2">
+    <div class="icon-circle" style="background:var(--navy); flex:none; width:40px; height:40px;">${ICONS.robot}<style>.icon-circle svg{color:#fff}</style></div>
+    <div style="font-size:11.8px; line-height:1.45;">Un programme autonome capable de <b>percevoir</b> son environnement, <b>raisonner</b> sur la situation, <b>décider</b> des actions à entreprendre et <b>agir</b> pour atteindre un objectif — avec un niveau d'autonomie variable. Il peut reposer sur des règles, des algorithmes classiques ou un LLM.</div>
+  </div>
+  <div class="grid g3" style="margin-top:14px; gap:14px;">
+    ${typeCard(3,'eye','Agent réactif',"Réagit immédiatement, sans planification complexe. Ex : un Pod passe en CrashLoopBackOff → l'agent collecte logs et événements et lance l'analyse.")}
+    ${typeCard(4,'brain','Agent délibératif',"Planifie selon un objectif, un historique et le contexte. Ex : avant de redémarrer un Deployment, il vérifie dépendances, risques, politiques de sécurité et impact utilisateurs.")}
+    ${typeCard(5,'sitemap','Système multi-agents',"Plusieurs agents spécialisés collaborent, chacun avec une responsabilité précise dans le pipeline.")}
+  </div>
+  <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-top:16px; flex-wrap:wrap;" data-anim style="--d:6">
+    ${['Collecte','Diagnostic','Planification','Remédiation','Validation'].map((s,i,arr)=>`<div style="display:flex; align-items:center; gap:6px;">
+      <div style="background:rgba(75,9,118,.07); border:1px solid rgba(75,9,118,.2); border-radius:8px; padding:5px 11px; font-size:10px; color:var(--ink); font-weight:600;">${s}</div>
+      ${i<arr.length-1?'<span style="color:rgba(75,9,118,.35); font-size:11px;">→</span>':''}
+    </div>`).join('')}
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:12px; font-size:11.5px; text-align:center;" data-anim style="--d:7">Dans un système multi-agents, chaque agent traite une étape puis transmet le résultat au suivant.</div>
+</div>
+`;
+
+const agentPage2 = `
+<div class="pad" style="padding-top:42px; padding-bottom:30px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONCEPT CLÉ N°1 · SUITE</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:26px;">LLM, Tools &amp; Skills</h1>
+  <div class="lede" style="font-size:12px; margin-top:8px;" data-anim style="--d:2">Un agent n'utilise pas toujours un LLM : il existe deux grandes familles.</div>
+  <div class="grid g2" style="margin-top:12px; gap:14px;" data-anim style="--d:3">
+    <div style="background:rgba(75,9,118,.05); border:1.5px solid rgba(75,9,118,.18); border-radius:10px; padding:12px 14px;">
+      <div style="font-size:9.5px; font-weight:700; color:var(--navy); font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px;">Agents classiques (sans LLM)</div>
+      <div style="font-size:10.5px; color:var(--ink); line-height:1.5;">Règles, scripts, algorithmes, arbres de décision, Machine Learning.</div>
+      <div style="font-size:9.5px; font-style:italic; color:var(--muted); margin-top:6px;">Rapides, déterministes, pour des tâches bien définies.</div>
+    </div>
+    <div style="background:rgba(244,193,11,.1); border:1.5px solid rgba(244,193,11,.35); border-radius:10px; padding:12px 14px;">
+      <div style="font-size:9.5px; font-weight:700; color:var(--navy); font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px;">Agents basés sur un LLM</div>
+      <div style="font-size:10.5px; color:var(--ink); line-height:1.5;">Comprennent le langage naturel, raisonnent sur plusieurs hypothèses, génèrent des plans, expliquent leurs décisions.</div>
+      <div style="font-size:9.5px; font-style:italic; color:var(--muted); margin-top:6px;">Utiles quand le contexte est complexe ou ambigu.</div>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:14px; gap:14px;" data-anim style="--d:4">
+    <div class="card" style="padding:14px 16px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">${iconCircle('sync','bg-blue')}<div style="font-family:var(--display); font-weight:700; font-size:15px; color:var(--ink);">Tool</div></div>
+      <div class="lede" style="font-size:11px; margin-bottom:6px;">Capacité externe : exécute une action ou fournit une information, sans prendre de décision.</div>
+      <div style="font-size:9.8px; color:var(--muted);">Ex. : kubectl, API Kubernetes, Prometheus, Grafana, Helm, Terraform.</div>
+    </div>
+    <div class="card" style="padding:14px 16px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">${iconCircle('brain','bg-teal')}<div style="font-family:var(--display); font-weight:700; font-size:15px; color:var(--ink);">Skill</div></div>
+      <div class="lede" style="font-size:11px; margin-bottom:6px;">Savoir-faire métier : combine raisonnement et plusieurs Tools pour accomplir une tâche.</div>
+      <div style="font-size:9.8px; color:var(--muted);">Ex. : Diagnostiquer un Pod → récupérer pods, événements, logs, analyser, proposer une remédiation.</div>
+    </div>
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:12px; font-size:11.5px;" data-anim style="--d:5">→ Tool = brique technique unique. Skill = compétence métier qui orchestre plusieurs Tools. KubePilot combine les deux dans son système multi-agents.</div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[agentPage1, agentPage2]});
+
+/* ---- 6. DEVOPS ---- */
+(function(){
+const devSteps=[{n:1,label:'Écriture code'},{n:2,label:'Gestion Git'},{n:3,label:'Tests CI'},{n:4,label:'Build'}];
+const opsSteps=[{n:5,label:'Docker'},{n:6,label:'K8s Deploy'},{n:7,label:'Monitoring'},{n:8,label:'Itération'}];
+// Center=(220,220), radius=160, 8 steps at 45° intervals starting from top (-90°)
+const pos=[[220,60],[333,107],[380,220],[333,333],[220,380],[107,333],[60,220],[107,107]];
+function chip(label,n,isOps,p){
+  const bg=isOps?'rgba(194,161,0,.12)':'rgba(75,9,118,.08)';
+  const bd=isOps?'rgba(194,161,0,.4)':'rgba(75,9,118,.25)';
+  const nb=isOps?'#b8960a':'var(--navy)';
+  return `<div style="position:absolute;top:${p[1]}px;left:${p[0]}px;transform:translate(-50%,-50%);background:${bg};border:1.5px solid ${bd};border-radius:8px;padding:4px 9px 4px 5px;display:flex;align-items:center;gap:5px;white-space:nowrap;z-index:1;"><div style="width:17px;height:17px;border-radius:5px;background:${nb};flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;font-weight:800;">${n}</div><span style="font-size:9.5px;color:var(--ink);font-weight:500;">${label}</span></div>`;
+}
+const allChips=[...devSteps.map((s,i)=>chip(s.label,s.n,false,pos[i])),...opsSteps.map((s,i)=>chip(s.label,s.n,true,pos[i+4]))].join('');
+const objectives=[
+  {icon:'bolt', text:'Accélérer les livraisons'},
+  {icon:'sync', text:'Automatiser les tâches répétitives'},
+  {icon:'shield',text:'Améliorer la fiabilité et la sécurité'},
+  {icon:'chart', text:'Assurer la disponibilité des applications'},
+  {icon:'hands', text:'Favoriser la collaboration entre les équipes'},
+];
+const tools=[
+  {label:'Git',cat:'Code'},{label:'GitHub Actions',cat:'CI/CD'},
+  {label:'Docker',cat:'Conteneurs'},{label:'Kubernetes',cat:'Orchestration'},
+  {label:'Terraform',cat:'IaC'},{label:'Prometheus',cat:'Monitoring'},
+];
+S.push({cls:'slide-light', html:`
+<div class="pad" style="padding-top:36px;padding-bottom:32px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONCEPT CLÉ N°2</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:28px;">Le DevOps, en général</h1>
+  <div style="display:grid;grid-template-columns:480px 1fr;gap:28px;margin-top:18px;align-items:start;">
+    <!-- Cycle diagram -->
+    <div data-anim style="--d:2">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:6px;">Cycle DevOps continu</div>
+      <div style="position:relative;width:440px;height:440px;">
+        <svg style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="da6" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <polygon points="0,0 7,3.5 0,7" fill="rgba(75,9,118,.55)"/>
+            </marker>
+          </defs>
+          <circle cx="220" cy="220" r="160" fill="none" stroke="rgba(75,9,118,.12)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <path d="M224,60 A160,160 0 0,1 333,107" fill="none" stroke="rgba(75,9,118,.5)" stroke-width="2.5" marker-end="url(#da6)"/>
+          <text x="374" y="142" font-size="9" fill="rgba(75,9,118,.4)" font-family="system-ui,sans-serif" font-weight="700" text-anchor="middle">DEV</text>
+          <text x="66" y="298" font-size="9" fill="rgba(164,130,0,.6)" font-family="system-ui,sans-serif" font-weight="700" text-anchor="middle">OPS</text>
+          <circle cx="220" cy="220" r="52" fill="rgba(75,9,118,.04)" stroke="rgba(75,9,118,.1)" stroke-width="1"/>
+          <text x="220" y="213" text-anchor="middle" font-size="28" fill="rgba(75,9,118,.28)" font-family="serif">∞</text>
+          <text x="220" y="233" text-anchor="middle" font-size="9" fill="rgba(75,9,118,.4)" font-family="system-ui,sans-serif" letter-spacing="1">DevOps</text>
+        </svg>
+        ${allChips}
+      </div>
+      <div style="display:flex;justify-content:center;gap:18px;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:3px;background:rgba(75,9,118,.6);"></div><span style="font-size:9px;color:var(--muted);">Développement</span></div>
+        <div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:3px;background:rgba(194,161,0,.7);"></div><span style="font-size:9px;color:var(--muted);">Exploitation / Ops</span></div>
+      </div>
+    </div>
+    <!-- Right content -->
+    <div style="display:flex;flex-direction:column;gap:13px;">
+      <div class="card" data-anim style="--d:3;padding:14px 18px;">
+        <div style="font-size:12px;color:var(--ink);line-height:1.6;">Le DevOps réunit les équipes de <strong>Développement</strong> et d'<strong>Exploitation</strong> afin de collaborer tout au long du cycle de vie d'une application — pour livrer plus rapidement, de manière <strong>fiable et automatisée</strong>.</div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Objectifs</div>
+        ${objectives.map((o,i)=>`<div data-anim style="--d:${4+i};display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;background:rgba(75,9,118,.04);margin-bottom:6px;">${iconCircle(o.icon,'bg-blue')}<span style="font-size:11.5px;color:var(--ink);">${o.text}</span></div>`).join('')}
+      </div>
+      <div data-anim style="--d:10">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Outils clés</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${tools.map(t=>`<div style="padding:4px 10px;border-radius:6px;background:rgba(75,9,118,.06);border:1px solid rgba(75,9,118,.14);"><span style="font-size:8.5px;font-family:var(--mono);color:var(--muted);display:block;line-height:1.3;">${t.cat}</span><span style="font-size:11px;color:var(--ink);font-weight:600;">${t.label}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="card" data-anim style="--d:11;background:var(--blue);padding:14px 18px;">
+        <div style="font-size:10.5px;font-style:italic;color:var(--navy);line-height:1.55;">Le DevOps n'est pas un outil, mais une <strong>culture de collaboration</strong> qui s'appuie sur l'automatisation pour développer, déployer et exploiter les applications de manière <strong>rapide, fiable et continue</strong>.</div>
+      </div>
+    </div>
+  </div>
+</div>
+`});
+})();
+
+/* ---- 7. KUBERNETES ---- */
+(function(){
+const k8sObjects=[
+  {name:'Pod',        icon:'server',   desc:'Unité minimale — 1+ conteneurs'},
+  {name:'Deployment', icon:'bolt',     desc:'Déploie et met à jour les apps'},
+  {name:'ReplicaSet', icon:'sync',     desc:'Nombre de Pods garanti'},
+  {name:'Service',    icon:'network',  desc:'Expose les apps en réseau'},
+  {name:'Namespace',  icon:'building', desc:'Isolation des ressources'},
+  {name:'ConfigMap',  icon:'lock',     desc:'Config. et données sensibles'},
+];
+const withItems=[
+  'Déploiement automatisé',
+  "Auto-réparation (Self-Healing)",
+  "Mise à l'échelle automatique (Scaling)",
+  'Répartition du trafic (Load Balancing)',
+  'Mises à jour sans interruption (Rolling Updates)',
+];
+const withoutItems=[
+  'Déploiement manuel',
+  'Redémarrage manuel sur panne',
+  'Scaling difficile à gérer',
+  'Load balancing complexe',
+];
+function miniIcon(name){
+  return `<div style="width:26px;height:26px;border-radius:7px;background:var(--navy);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;"><div style="width:13px;height:13px;">${ICONS[name]}</div></div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad" style="padding-top:36px;padding-bottom:32px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONCEPT CLÉ N°3</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:28px;">Kubernetes — orchestration de conteneurs</h1>
+  <div style="display:grid;grid-template-columns:410px 1fr;gap:28px;margin-top:18px;align-items:start;">
+
+    <!-- LEFT: Architecture + Objects -->
+    <div data-anim style="--d:2">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Fonctionnement simplifié</div>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="background:rgba(75,9,118,.07);border:1.5px solid rgba(75,9,118,.2);border-radius:10px;padding:8px 24px;">
+          <span style="font-size:12px;color:var(--ink);font-weight:600;">Application</span>
+        </div>
+        <div style="width:2px;height:12px;background:rgba(75,9,118,.22);"></div>
+        <div style="font-size:10px;color:rgba(75,9,118,.4);margin:-4px 0;">▼</div>
+        <div style="width:2px;height:8px;background:rgba(75,9,118,.22);"></div>
+        <div style="background:rgba(0,100,180,.08);border:1.5px solid rgba(0,100,180,.22);border-radius:10px;padding:8px 24px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;">🐳</span>
+          <span style="font-size:12px;color:var(--ink);font-weight:600;">Docker Container</span>
+        </div>
+        <div style="width:2px;height:12px;background:rgba(75,9,118,.22);"></div>
+        <div style="font-size:10px;color:rgba(75,9,118,.4);margin:-4px 0;">▼</div>
+        <div style="width:2px;height:8px;background:rgba(75,9,118,.22);"></div>
+        <div style="background:var(--navy);border-radius:12px;padding:13px 14px;width:100%;box-sizing:border-box;">
+          <div style="font-family:var(--mono);font-size:9px;color:#8c6aa3;letter-spacing:.12em;text-transform:uppercase;text-align:center;margin-bottom:9px;">Kubernetes Cluster</div>
+          <div style="background:rgba(75,9,118,.5);border-radius:7px;padding:6px 10px;text-align:center;margin-bottom:9px;">
+            <span style="font-size:9px;color:#dac2e6;font-family:var(--mono);">Control Plane · API Server · Scheduler · etcd</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:rgba(75,9,118,.3);border-radius:7px;padding:8px 10px;">
+              <div style="font-size:8px;color:#8c6aa3;font-family:var(--mono);margin-bottom:6px;">Worker Node 1</div>
+              <div style="display:flex;gap:5px;">
+                <div class="pod-chip" style="width:20px;height:20px;border-radius:5px;background:var(--blue);"></div>
+                <div class="pod-chip" style="width:20px;height:20px;border-radius:5px;background:#8c6aa3;animation-delay:.35s"></div>
+                <div class="pod-chip" style="width:20px;height:20px;border-radius:5px;background:var(--blue);animation-delay:.7s"></div>
+              </div>
+              <div style="font-size:7.5px;color:#8c6aa3;margin-top:4px;font-family:var(--mono);">Pods</div>
+            </div>
+            <div style="background:rgba(75,9,118,.3);border-radius:7px;padding:8px 10px;">
+              <div style="font-size:8px;color:#8c6aa3;font-family:var(--mono);margin-bottom:6px;">Worker Node 2</div>
+              <div style="display:flex;gap:5px;">
+                <div class="pod-chip" style="width:20px;height:20px;border-radius:5px;background:#8c6aa3;animation-delay:1.05s"></div>
+                <div class="pod-chip" style="width:20px;height:20px;border-radius:5px;background:var(--blue);animation-delay:1.4s"></div>
+              </div>
+              <div style="font-size:7.5px;color:#8c6aa3;margin-top:4px;font-family:var(--mono);">Pods</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Principaux objets</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          ${k8sObjects.map((o,i)=>`<div data-anim style="--d:${3+i};display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:8px;background:rgba(75,9,118,.05);border:1px solid rgba(75,9,118,.1);">${miniIcon(o.icon)}<div><div style="font-size:10px;font-weight:700;color:var(--ink);">${o.name}</div><div style="font-size:8.5px;color:var(--muted);line-height:1.3;">${o.desc}</div></div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Content -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" data-anim style="--d:3;padding:13px 18px;">
+        <div style="font-size:12px;color:var(--ink);line-height:1.6;"><strong>Kubernetes (K8s)</strong> est une plateforme open source d'<strong>orchestration de conteneurs</strong> — il automatise le déploiement, la mise à l'échelle et la gestion des applications conteneurisées. C'est le <strong>standard du cloud-native</strong>.</div>
+      </div>
+      <div data-anim style="--d:4">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="background:rgba(180,40,40,.06);border:1.5px solid rgba(180,40,40,.18);border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9.5px;font-weight:700;color:rgba(150,30,30,.8);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">Sans Kubernetes</div>
+            ${withoutItems.map(t=>`<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;"><span style="color:rgba(170,40,40,.7);font-size:12px;flex-shrink:0;line-height:1.3;">✕</span><span style="font-size:11px;color:var(--ink);">${t}</span></div>`).join('')}
+          </div>
+          <div style="background:rgba(75,9,118,.05);border:1.5px solid rgba(75,9,118,.2);border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9.5px;font-weight:700;color:var(--navy);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">Avec Kubernetes</div>
+            ${withItems.map(t=>`<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;"><span style="color:var(--navy);font-size:12px;flex-shrink:0;font-weight:700;line-height:1.3;">✓</span><span style="font-size:11px;color:var(--ink);">${t}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="card" data-anim style="--d:10;background:var(--blue);padding:13px 18px;">
+        <div style="font-size:11px;font-style:italic;color:var(--navy);line-height:1.55;">Kubernetes est le <strong>chef d'orchestre des conteneurs</strong> : il garantit que les applications restent disponibles, évolutives et résilientes, tout en automatisant leur gestion.</div>
+      </div>
+      <div class="card card-dark" data-anim style="--d:11;padding:13px 18px;">
+        <div style="font-size:11px;color:#dac2e6;line-height:1.55;">Kubernetes automatise l'exécution des applications. <strong style="color:var(--blue);">KubePilot</strong> va plus loin — il automatise les <strong style="color:var(--blue);">opérations et la gestion intelligente du cluster</strong> : diagnostic, remédiation, surveillance et assistance aux administrateurs.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>.pod-chip{animation:breathe 2.6s ease-in-out infinite;} @keyframes breathe{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.08);opacity:1}}</style>
+`});
+})();
+
+/* ---- 8. ROLE EXPERT ---- */
+function taskCard(i,iconName,bg,title,text,dbLabel){
+  return `<div class="card" data-anim style="--d:${i}; display:flex; gap:14px; padding:18px;">
+    ${iconCircle(iconName,bg)}
+    <div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <div style="font-family:var(--display); font-weight:700; font-size:13.5px; color:var(--ink);">${title}</div>
+        ${dbLabel?`<span style="font-family:var(--mono); font-size:9px; color:var(--navy); background:rgba(75,9,118,.08); border:1px solid rgba(75,9,118,.18); border-radius:5px; padding:2px 7px; white-space:nowrap;">${dbLabel}</span>`:''}
+      </div>
+      <div class="lede" style="font-size:11px; line-height:1.4;">${text}</div>
+    </div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">CONCEPT CLÉ N°4</div>
+  <h1 class="title title-light" data-anim style="--d:1">Le rôle de l'expert Kubernetes</h1>
+  <div class="grid g3" style="margin-top:30px;">
+    ${taskCard(2,'eye','bg-blue','Surveillance continue','Suivi des métriques, des logs et des alertes 24/7.')}
+    ${taskCard(3,'search','bg-blue',"Diagnostic d'incidents","Identifier la cause racine d'une anomalie sur le cluster.")}
+    ${taskCard(4,'sync','bg-blue','Remédiation','Redémarrer, reconfigurer ou faire évoluer les ressources affectées.')}
+    ${taskCard(5,'lock','bg-teal','Gestion RBAC & sécurité',"Définir et auditer les permissions d'accès au cluster.")}
+    ${taskCard(6,'chart','bg-teal','Capacity planning','Anticiper les besoins en ressources et ajuster le scaling.')}
+    ${taskCard(7,'clipboard','bg-teal','Documentation & reporting',"Tracer les incidents et leur résolution pour l'amélioration continue.")}
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:24px; font-size:13px;" data-anim style="--d:8">KubePilot vise à automatiser une part significative de ces tâches répétitives, tout en gardant l'expert dans la boucle pour les décisions critiques.</div>
+</div>
+`});
+
+/* ---- 8.5 KUBEPILOT EN UNE PHRASE ---- */
+function capChip(i,iconName,bg,label){
+  return `<div class="card" data-anim style="--d:${i}; text-align:center; padding:20px 10px;">
+    <div style="display:flex; justify-content:center; margin-bottom:10px;">${iconCircle(iconName,bg)}</div>
+    <div style="font-family:var(--display); font-weight:700; font-size:12.5px; color:var(--ink);">${label}</div>
+  </div>`;
+}
+function capDetail(i,iconName,bgColor,title,text){
+  return `<div class="card" data-anim style="--d:${i}; text-align:center; padding:14px 10px;">
+    <div style="display:flex; justify-content:center; margin-bottom:8px;">
+      <div style="width:36px; height:36px; border-radius:50%; background:${bgColor}; display:flex; align-items:center; justify-content:center; color:#fff;"><div style="width:17px; height:17px;">${ICONS[iconName]}</div></div>
+    </div>
+    <div style="font-family:var(--display); font-weight:700; font-size:11.5px; color:var(--ink); margin-bottom:5px; line-height:1.2;">${title}</div>
+    <div class="lede" style="font-size:9.8px; line-height:1.3;">${text}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">VUE D'ENSEMBLE</div>
+  <h1 class="title title-light" data-anim style="--d:1">KubePilot, en une phrase</h1>
+  <div class="card card-dark" style="margin-top:20px; padding:22px 28px;" data-anim style="--d:2">
+    <div style="font-family:var(--display); font-size:15px; line-height:1.5; color:#fff;">
+      KubePilot est une plateforme d'opérations Kubernetes <b style="color:var(--teal)">autonome</b>, basée sur un système multi-agents IA : elle <b style="color:var(--teal)">surveille</b> les clusters en continu, <b style="color:var(--teal)">diagnostique</b> les incidents, et n'applique une <b style="color:var(--teal)">remédiation automatique</b> que si la cause est identifiée, le risque jugé acceptable et les politiques de sécurité respectées — sinon, elle <b style="color:var(--teal)">prévient un humain</b>. Le tout piloté depuis un tableau de bord complet.
+    </div>
+  </div>
+  <div class="grid g5" style="margin-top:18px;">
+    ${capDetail(3,'eye','var(--blue)','Surveillance continue','Pods, nœuds, métriques et événements analysés en temps réel.')}
+    ${capDetail(4,'brain','var(--blue)','Diagnostic intelligent','Agents IA, analyse des logs, RCA et mémoire des incidents passés.')}
+    ${capDetail(5,'bolt','#8c6aa3','Remédiation automatisée',"Corrige seul si la cause est sûre et le risque acceptable.")}
+    ${capDetail(6,'shield','#8c6aa3','Contrôle humain &amp; sécurité','Validation humaine, garde-fous techniques, audit complet.')}
+    ${capDetail(7,'database','#8c6aa3','Apprentissage continu','Chaque incident enrichit la mémoire et les règles futures.')}
+  </div>
+  <div class="lede" style="font-style:italic; margin-top:18px; font-size:12px;" data-anim style="--d:8">→ La suite détaille : l'architecture globale, le pipeline d'agents IA, les mécanismes de sécurité et de décision, puis le tableau de bord et la supervision.</div>
+</div>
+`});
+
+/* ---- 9. ARCHITECTURE ---- */
+function archLayer(i,iconName,bg,title,text){
+  return `<div class="card" data-anim style="--d:${i}; display:flex; align-items:center; gap:16px; padding:14px 18px;">
+    ${iconCircle(iconName,bg)}
+    <div>
+      <div style="font-family:var(--display); font-weight:700; font-size:13.5px; color:var(--ink);">${title}</div>
+      <div class="lede" style="font-size:10.8px; margin-top:2px; line-height:1.35;">${text}</div>
+    </div>
+  </div>`;
+}
+const archPage1 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">VUE D'ENSEMBLE</div>
+  <h1 class="title title-light" data-anim style="--d:1">Architecture globale de KubePilot</h1>
+  <div class="lede" style="font-size:12.5px; margin-top:6px; max-width:820px;" data-anim style="--d:2">De l'interface jusqu'aux clusters Kubernetes supervisés, en passant par deux branches indépendantes : l'autonomie et les services. La page suivante détaille ce schéma en profondeur.</div>
+  <div class="grid g3" style="margin-top:20px; gap:13px;">
+    ${archLayer(3,'user','bg-blue',"Dashboard UI","Application React/Vite dans le navigateur — seul point d'entrée humain. REST pour les actions, SSE pour les événements en temps réel.")}
+    ${archLayer(4,'network','bg-blue',"API Server","Serveur Express.js central : reçoit les requêtes, expose les routes REST et maintient les connexions SSE. Se ramifie en deux branches indépendantes.")}
+    ${archLayer(5,'sitemap','bg-blue',"Fleet Orchestrator","Pilote l'autonomie : un cycle toutes les 30 secondes, jusqu'à 3 clusters en parallèle, et crée un Cluster Agent dédié par cluster configuré.")}
+    ${archLayer(6,'brain','bg-teal',"Cluster Agent","Le cœur de la remédiation automatique : collecte, analyse, corrèle et exécute un pipeline de décision en 12 étapes pour chaque problème détecté.")}
+    ${archLayer(7,'hands','bg-teal',"Services Layer","La branche indépendante — hors autonomie : deux chats IA (commandes et assistant), coûts et capacité, utilisateurs et équipes, RBAC et permissions, notifications, gestion des agents, historique et escalades (ticketing).")}
+    ${archLayer(8,'sync','bg-teal',"Tool Layer","kubectl.js — seul point de contact direct et sécurisé avec Kubernetes (execFile, jamais de shell).")}
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:16px; font-size:12px;" data-anim style="--d:9">→ La page suivante détaille cette architecture, couche par couche, jusqu'aux clusters supervisés (minikube, AKS, GKE, EKS…).</div>
+</div>
+`;
+
+function flowChips(items){
+  return `<div style="display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${items.map(t=>`<span style="background:#fff; border:1px solid rgba(75,9,118,.16); border-radius:5px; padding:2px 6px; font-size:7.2px; color:var(--ink); font-family:var(--mono); white-space:nowrap;">${t}</span>`).join('')}</div>`;
+}
+function flowBox(title,sub,items){
+  return `<div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:1.5px solid rgba(75,9,118,.22); background:rgba(75,9,118,.03); border-radius:9px; padding:6px 13px 8px;">
+    <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:10px; color:var(--ink); margin-bottom:${sub?'1px':'5px'}; white-space:nowrap;">${title}</div>
+    ${sub?`<div style="text-align:center; font-family:var(--mono); font-size:6.8px; color:var(--muted); margin-bottom:5px; white-space:nowrap;">${sub}</div>`:''}
+    ${flowChips(items)}
+  </div></div>`;
+}
+function flowArrow(label){
+  return `<div style="display:flex; flex-direction:column; align-items:center; margin:1px 0;">
+    <div style="width:1.5px; height:7px; background:rgba(75,9,118,.25);"></div>
+    ${label?`<div style="font-family:var(--mono); font-size:6.8px; color:var(--muted); margin:1px 0; text-align:center;">${label}</div>`:''}
+    <div style="font-size:7.5px; color:rgba(75,9,118,.4); line-height:1;">▼</div>
+  </div>`;
+}
+/* branch fork: one stem down from the parent box, splitting into two drops at lPct/rPct (% of container width) */
+function flowSplit(lPct,rPct,lLabel,rLabel){
+  return `<div style="position:relative; height:22px; margin:1px 0 2px;">
+    <div style="position:absolute; left:50%; top:0; width:1.5px; height:7px; background:rgba(75,9,118,.25); transform:translateX(-50%);"></div>
+    <div style="position:absolute; left:${lPct}%; right:${100-rPct}%; top:7px; height:1.5px; background:rgba(75,9,118,.25);"></div>
+    <div style="position:absolute; left:${lPct}%; top:7px; width:1.5px; height:6px; background:rgba(75,9,118,.25); transform:translateX(-50%);"></div>
+    <div style="position:absolute; left:${lPct}%; top:13px; font-size:7px; color:rgba(75,9,118,.4); line-height:1; transform:translateX(-50%);">▼</div>
+    <div style="position:absolute; left:${rPct}%; top:7px; width:1.5px; height:6px; background:rgba(75,9,118,.25); transform:translateX(-50%);"></div>
+    <div style="position:absolute; left:${rPct}%; top:13px; font-size:7px; color:rgba(75,9,118,.4); line-height:1; transform:translateX(-50%);">▼</div>
+  </div>
+  <div style="display:grid; grid-template-columns:2.1fr 1fr; gap:10px;">
+    <div style="text-align:center; font-family:var(--mono); font-size:6.6px; color:var(--muted);">${lLabel}</div>
+    <div style="text-align:center; font-family:var(--mono); font-size:6.6px; color:var(--muted);">${rLabel}</div>
+  </div>`;
+}
+function pipelinePhase(title,items){
+  return `<div style="background:rgba(75,9,118,.05); border-radius:8px; padding:5px 8px;">
+    <div style="font-size:7.2px; font-weight:700; color:var(--navy); margin-bottom:2px;">${title}</div>
+    <div style="font-size:6.4px; color:var(--ink); line-height:1.45;">${items}</div>
+  </div>`;
+}
+function serviceItem(title,desc){
+  return `<div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:7px; padding:4px 7px;">
+    <div style="font-size:7.3px; font-weight:700; color:var(--ink);">${title}</div>
+    <div style="font-size:6.3px; color:var(--muted); line-height:1.3;">${desc}</div>
+  </div>`;
+}
+
+/* larger variants of the flow-diagram components, used on the "partie réactive" detail pages
+   (kept separate from the compact ones above so the Architecture diagram is unaffected) */
+function flowChipsLg(items){
+  return `<div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:center;">${items.map(t=>`<span style="background:#fff; border:1px solid rgba(75,9,118,.16); border-radius:6px; padding:3.5px 10px; font-size:10px; color:var(--ink); font-family:var(--mono); white-space:nowrap;">${t}</span>`).join('')}</div>`;
+}
+function flowBoxLg(title,sub,items){
+  return `<div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:1.5px solid rgba(75,9,118,.22); background:rgba(75,9,118,.03); border-radius:11px; padding:10px 20px 12px;">
+    <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:14.5px; color:var(--ink); margin-bottom:${sub?'2px':'8px'}; white-space:nowrap;">${title}</div>
+    ${sub?`<div style="text-align:center; font-family:var(--mono); font-size:9.5px; color:var(--muted); margin-bottom:8px; white-space:nowrap;">${sub}</div>`:''}
+    ${flowChipsLg(items)}
+  </div></div>`;
+}
+function flowArrowLg(label){
+  return `<div style="display:flex; flex-direction:column; align-items:center; margin:4px 0;">
+    <div style="width:2px; height:12px; background:rgba(75,9,118,.25);"></div>
+    ${label?`<div style="font-family:var(--mono); font-size:9.5px; color:var(--muted); margin:2px 0; text-align:center;">${label}</div>`:''}
+    <div style="font-size:11px; color:rgba(75,9,118,.4); line-height:1;">▼</div>
+  </div>`;
+}
+function pipelinePhaseLg(title,items){
+  return `<div style="background:rgba(75,9,118,.05); border-radius:9px; padding:9px 12px;">
+    <div style="font-size:10.5px; font-weight:700; color:var(--navy); margin-bottom:4px;">${title}</div>
+    <div style="font-size:9.3px; color:var(--ink); line-height:1.5;">${items}</div>
+  </div>`;
+}
+function guardItemLg(title,desc){
+  return `<div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:9px; padding:8px 12px;">
+    <div style="font-size:10.5px; font-weight:700; color:var(--ink); margin-bottom:3px;">${title}</div>
+    <div style="font-size:9.3px; color:var(--muted); line-height:1.4;">${desc}</div>
+  </div>`;
+}
+
+const archPage2 = `
+<div class="pad" style="padding:20px 76px 10px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">VUE D'ENSEMBLE · SUITE</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:17px; margin-top:2px;">Architecture technique détaillée</h1>
+  <div style="margin-top:7px;" data-anim style="--d:2">
+    ${flowBox('Dashboard UI','React / Vite — seul point d\'entrée humain',['Login','Dashboard','Agents','Escalations','History','Capacity','Chat AI','RBAC','Users','Teams','Notifications','Profile'])}
+    ${flowArrow('REST (actions) + SSE (événements temps réel, sans polling)')}
+    ${flowBox('API Server','Express.js — point central du backend',['/api/auth','/api/clusters','/api/chat','/api/escalations','/api/approvals','/api/rbac','/api/capacity','/api/command'])}
+    ${flowSplit(33.6,84,'branche autonomie','branche services')}
+    <div style="display:grid; grid-template-columns:2.1fr 1fr; gap:10px; align-items:start;">
+      <div>
+        ${flowBox('Fleet Orchestrator','pilote toute l\'autonomie',['Boucle infinie · 30s','≤ 3 clusters en parallèle','clusters.yaml (hot-reload)','1 Cluster Agent / cluster'])}
+        ${flowArrow()}
+        <div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:2px solid var(--blue); background:rgba(244,193,11,.06); border-radius:12px; padding:8px 13px 9px;">
+          <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:10px; color:var(--ink); white-space:nowrap;">Cluster Agent</div>
+          <div style="text-align:center; font-family:var(--mono); font-size:6.7px; color:var(--muted); margin-bottom:5px; white-space:nowrap;">cœur de la remédiation automatique — collecte parallèle : pods, nœuds, events, métriques</div>
+          ${flowChips(['Run lock','Resource locks','Cooldowns','ISSUE_CONCURRENCY=3'])}
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:6px;">
+            <div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:8px; padding:4px 6px;">
+              <div style="font-size:7.6px; font-weight:700; color:var(--ink); margin-bottom:2px;">PodAnalyzer</div>
+              <div style="font-size:6.4px; color:var(--muted); line-height:1.3;">7 types de pannes</div>
+            </div>
+            <div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:8px; padding:4px 6px;">
+              <div style="font-size:7.6px; font-weight:700; color:var(--ink); margin-bottom:2px;">NodeAnalyzer</div>
+              <div style="font-size:6.4px; color:var(--muted); line-height:1.3;">NotReady · pressions · flapping</div>
+            </div>
+            <div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:8px; padding:4px 6px;">
+              <div style="font-size:7.6px; font-weight:700; color:var(--ink); margin-bottom:2px;">EventAnalyzer</div>
+              <div style="font-size:6.4px; color:var(--muted); line-height:1.3;">≥3 occurrences ou &lt;2min</div>
+            </div>
+          </div>
+          ${flowArrow()}
+          <div style="text-align:center; font-size:7.6px; color:var(--ink); margin-bottom:6px;"><b>CorrelationEngine</b> <span style="color:var(--muted);">— croise pannes de pods × état des nœuds pour identifier un nœud à l'origine de plusieurs pannes</span></div>
+          <div style="text-align:center; font-family:var(--mono); font-size:6.8px; letter-spacing:.1em; text-transform:uppercase; color:var(--navy); margin-bottom:5px;">Pipeline de décision — 12 étapes, par problème détecté</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+            ${pipelinePhase('① Investigation','Logs + métriques · Evidence Gate (si ambigu) · Mémoire d\'épisodes similaires · Règles apprises · RCA ║ ChangeCorrelationEngine (parallèle)')}
+            ${pipelinePhase('② Décision','PlannerAgent (LLM) décide · PolicyEngine (10 règles non-bypassables) · GuardianAgent (2ᵉ LLM indépendant) · RiskEngine · Approbation humaine si risque élevé/incertain')}
+            ${pipelinePhase('③ Exécution','Action appliquée sur Kubernetes · Validation (problème résolu ?) · ReflectionAgent (leçons) · Épisode persisté → mémoire future')}
+          </div>
+        </div></div>
+        ${flowArrow()}
+        ${flowBox('Tool Layer — kubectl.js','seul point de contact direct avec Kubernetes · execFile (jamais de shell) → anti-injection',['Lire pods/logs/nœuds/events','restart · rollback · scale','cordon · drain','RBAC r/w','Impersonation --as=email'])}
+        ${flowArrow()}
+        <div style="text-align:center; font-family:var(--mono); font-size:8.5px; letter-spacing:.12em; color:var(--navy); font-weight:700;">KUBERNETES CLUSTER(S)</div>
+        <div style="text-align:center; font-size:7px; color:var(--muted); margin-top:2px;">minikube · AKS · GKE · EKS · tout cluster accessible par kubectl</div>
+      </div>
+      <div>
+        <div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:1.5px solid rgba(75,9,118,.22); background:rgba(75,9,118,.03); border-radius:9px; padding:6px 13px 8px;">
+          <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:10px; color:var(--ink); white-space:nowrap;">Services Layer</div>
+          <div style="text-align:center; font-family:var(--mono); font-size:6.8px; color:var(--muted); margin-bottom:6px; white-space:nowrap;">tout ce qui n'est pas l'autonomie</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+            ${serviceItem('Chat Commandes','exécute des actions via 8 outils live')}
+            ${serviceItem('Chat Assistant IA','répond aux questions, explique, conseille')}
+            ${serviceItem('Coûts &amp; capacité','calcul en temps réel')}
+            ${serviceItem('Utilisateurs &amp; équipes',"gestion des accès")}
+            ${serviceItem('Sync RBAC','permissions Kubernetes')}
+            ${serviceItem('Permissions','contrôle d\'accès')}
+            ${serviceItem('Notifications','moteur multi-canal')}
+            ${serviceItem('Gestion des agents','suivi &amp; configuration des Cluster Agents')}
+            ${serviceItem('Historique','approbations &amp; escalades passées')}
+            ${serviceItem('Escalades','gestion type ticketing')}
+          </div>
+        </div></div>
+        <div style="text-align:center; font-style:italic; font-size:6.7px; color:var(--muted); margin-top:4px;">Branche indépendante — hors boucle de remédiation automatique.</div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[archPage1, archPage2]});
+
+/* ---- 10. AGENTS CARDS ---- */
+function agentCard(i,iconName,title,text){
+  return `<div class="card" data-anim style="--d:${i}; text-align:center; padding:18px 12px;">
+    <div style="display:flex; justify-content:center; margin-bottom:12px;">${iconCircle(iconName,'bg-blue')}</div>
+    <div style="font-family:var(--display); font-weight:700; font-size:13px; color:var(--ink); margin-bottom:8px;">${title}</div>
+    <div class="lede" style="font-size:10.5px; line-height:1.4;">${text}</div>
+  </div>`;
+}
+const surveillancePage1 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · 1/4</div>
+  <h1 class="title title-light" style="font-size:30px;" data-anim style="--d:1">Toutes les 30 secondes : surveiller et repérer</h1>
+  <div class="lede" style="font-size:12.5px; margin-top:4px;" data-anim style="--d:2">Avant même d'appeler l'IA, des analyseurs déterministes (du code classique, sans IA) passent le cluster au crible.</div>
+  <div class="grid g5" style="margin-top:20px;">
+    ${agentCard(3,'server','Collecte continue',"kubectl et Prometheus récupèrent l'état de tous les pods et nœuds.")}
+    ${agentCard(4,'warning','Analyseur de pods',"Repère CrashLoopBackOff, OOM, erreurs d'image, pods bloqués.")}
+    ${agentCard(5,'network','Analyseur de nœuds',"Détecte les nœuds NotReady ou en pression mémoire/disque.")}
+    ${agentCard(6,'clipboard',"Analyseur d'événements","Surveille les alertes Kubernetes qui se répètent ou persistent.")}
+    ${agentCard(7,'sitemap','Moteur de corrélation',"Relie les pannes entre elles : 3 pods qui tombent sur le même nœud = nœud suspect.")}
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:14px; font-size:12px;" data-anim style="--d:8">→ Son rôle : transformer du bruit Kubernetes brut en incidents qualifiés, priorisés et annotés, prêts pour le cycle de décision. La page suivante détaille le fonctionnement exact.</div>
+  <div class="grid g2" style="margin-top:12px; gap:14px;" data-anim style="--d:9">
+    ${shotPlaceholder("ClusterHealthPage — pods par namespace, état des nœuds", 100)}
+    ${shotPlaceholder("AgentsPage — logs en direct du système", 100)}
+  </div>
+</div>
+`;
+
+const surveillancePage2 = `
+<div class="pad" style="padding:22px 48px 12px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · 1/4 · SUITE</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:22px; margin-top:2px;">Surveillance — détail technique</h1>
+  <div style="margin-top:10px;" data-anim style="--d:2">
+    ${flowBoxLg('Collecte parallèle','toutes les 30s (CYCLE_INTERVAL_MS) — 5 requêtes simultanées',['kubectl get pods --all-namespaces -o json','kubectl get nodes -o json','kubectl get events --all-namespaces -o json','Prometheus PromQL (CPU/mémoire/restarts par pod)','Prometheus PromQL (CPU%/mem%/disk% par nœud)'])}
+    ${flowArrowLg('ces données brutes passent dans trois analyseurs')}
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:11px;">
+      ${pipelinePhaseLg('PodAnalyzer — 7 types de pannes','CrashLoopBackOff · OOMKilled (tué par le kernel) · ContainerError (exit code ≠0) · ImagePullBackOff · Unschedulable (Pending +45s) · PodNotReady · Init container crash. Identifie aussi le owner (Deployment/StatefulSet/DaemonSet/Job/pod nu) — décisif pour la remédiation.')}
+      ${pipelinePhaseLg('NodeAnalyzer','Conditions : NodeNotReady, MemoryPressure, DiskPressure, PIDPressure. Détecte aussi les nœuds qui changent d\'état trop souvent (flapping).')}
+      ${pipelinePhaseLg('EventAnalyzer','Filtre le bruit : un événement n\'est retenu que s\'il atteint 3 occurrences ou est survenu dans les 2 dernières minutes — évite d\'agir sur des signaux isolés qui se résolvent seuls.')}
+    </div>
+    ${flowArrowLg()}
+    <div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:1.5px solid rgba(75,9,118,.22); background:rgba(75,9,118,.03); border-radius:10px; padding:9px 18px 10px;">
+      <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:13px; color:var(--ink); white-space:nowrap;">CorrelationEngine</div>
+      <div style="text-align:center; font-size:9.5px; color:var(--ink); line-height:1.4; max-width:780px;">Si plusieurs pods en échec tournent sur le même nœud, il identifie ce nœud comme <b>« hot node »</b> — le problème vient probablement du nœud, pas des applications.</div>
+    </div></div>
+    <div style="text-align:center; font-style:italic; color:var(--blue-dark); font-size:11px; margin-top:11px;">→ Son rôle : transformer du bruit Kubernetes brut en une liste d'incidents qualifiés, priorisés et annotés de leur contexte (namespace, nœud, controller, métriques).</div>
+  </div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[surveillancePage1, surveillancePage2]});
+
+/* ---- 10.5 MÉMOIRE AVANT DÉCISION ---- */
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · 2/4</div>
+  <h1 class="title title-light" data-anim style="--d:1">Avant de décider, l'agent consulte sa mémoire</h1>
+  <div class="lede" style="font-size:12.5px; margin-top:4px; max-width:840px;" data-anim style="--d:2">Une fois l'anomalie repérée, KubePilot ne se précipite pas vers l'IA : il vérifie d'abord ce qu'il sait déjà — quatre couches de mémoire, du plus précis au plus général.</div>
+  <div class="grid g2" style="margin-top:20px; row-gap:14px;">
+    ${taskCard(3,'database','bg-blue','Mémoire épisodique',"A-t-on déjà vu ce problème sur ce cluster ? Chaque incident devient un « épisode » indexé par fingerprint : contexte, timeline des tentatives et RCA — pour une recherche instantanée.",'MongoDB')}
+    ${taskCard(4,'search','bg-blue','Recherche sémantique',"Recherche par similarité : chaque épisode est aussi converti en vecteur d'embedding, pour retrouver des incidents « similaires en sens » même si le fingerprint exact diffère.",'Qdrant')}
+    ${taskCard(5,'clipboard','bg-teal','Règles apprises',"Après chaque résolution, le Rule Engine extrait automatiquement des règles des cas récurrents — ex. « increase_memory résout 4/4 fois les OOM sur ce cluster » — injectées dans le prompt du Planner.",'MongoDB')}
+    ${taskCard(6,'eye','bg-teal',"Mémoire temporelle","Mémoire court terme de la session (TTL 7 jours) : trace les actions récentes et détecte des patterns — si 5 actions à risque élevé échouent d'affilée, elle recommande une attention humaine immédiate.",'MongoDB')}
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:16px; font-size:12.5px;" data-anim style="--d:7">→ Son rôle : alimenter le cycle de décision avec le contexte des incidents passés et les règles extraites — pour être plus précis à chaque cycle plutôt que de repartir de zéro.</div>
+</div>
+`});
+
+/* ---- 11. WORKFLOW ---- */
+const archColor = { gold:'#f4c10b', goldText:'#8a6a0a', purple:'#8c6aa3', green:'#2e9e5b', red:'#b8433a' };
+const archMain = [
+  [55, 195,'chart',    'Evidence',    'Logs + Prometheus metrics',   archColor.gold],
+  [127,325,'brain',    'Memory',      'Fingerprint + Qdrant',        archColor.gold],
+  [199,195,'clipboard','Rules + RCA', 'Rules + root cause analysis', archColor.purple],
+  [271,325,'robot',    'Planner',     'LLM generates JSON action',   archColor.purple],
+  [343,195,'shield',   'Policy',      '10 non-bypassable rules',     archColor.gold],
+  [415,325,'shield',   'Guardian',    'LLM safety review',           archColor.purple],
+  [520,215,'balance',  'Risk Engine', 'Weighted risk score',         archColor.gold],
+];
+const archTail = [
+  [860,200, 'bolt',    'Execution',   'Applies the chosen action', archColor.gold],
+  [950,290, 'search',  'Validation',  'Confirms resolution',       archColor.gold],
+  [1040,200,'brain',   'Reflection',  'LLM extracts lessons',      archColor.purple],
+  [1130,290,'database','Persistence','MongoDB + Qdrant + rules', archColor.gold],
+];
+function archCard(x,y,icon,title,sub,color,w,h){
+  const cw=w||96, ch=h||74;
+  return `<div style="position:absolute; left:${x-cw/2}px; top:${y-ch/2}px; width:${cw}px; height:${ch}px; background:#fff; border:1px solid rgba(75,9,118,.12); border-radius:14px; box-shadow:0 8px 18px -10px rgba(75,9,118,.28); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px; box-sizing:border-box;">
+    <div class="arch-icon" style="width:24px; height:24px; border-radius:8px; background:${color}; display:flex; align-items:center; justify-content:center; color:#fff;">${ICONS[icon]}</div>
+    <div style="font-family:var(--display); font-weight:700; font-size:9.8px; color:var(--navy); text-align:center; line-height:1.15;">${title}</div>
+    <div style="font-family:var(--body); font-size:6.7px; color:#8c6aa3; text-align:center; line-height:1.2;">${sub}</div>
+  </div>`;
+}
+function branchCard(x,y,w,h,icon,title,sub,color){
+  return `<div style="position:absolute; left:${x-w/2}px; top:${y-h/2}px; width:${w}px; height:${h}px; background:${color}14; border:1.5px solid ${color}; border-radius:14px; display:flex; align-items:center; gap:8px; padding:7px 11px; box-sizing:border-box;">
+    <div class="arch-icon" style="width:26px; height:26px; border-radius:8px; background:${color}; display:flex; align-items:center; justify-content:center; color:#fff; flex:none;">${ICONS[icon]}</div>
+    <div>
+      <div style="font-family:var(--display); font-weight:700; font-size:10.5px; color:var(--navy);">${title}</div>
+      <div style="font-family:var(--body); font-size:7.2px; color:#8c6aa3; line-height:1.25;">${sub}</div>
+    </div>
+  </div>`;
+}
+function archDot(x,y,r,color,delay){
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" style="animation:nodePulse 2.6s ease-in-out infinite; animation-delay:${delay||0}s; transform-origin:${x}px ${y}px;"/>`;
+}
+function statusNode(x,y,label,sub,color){
+  return `${archDot(x,y,10,color)}<foreignObject x="${x-58}" y="${y+14}" width="116" height="40"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--display); font-weight:700; font-size:8.4px; color:${color}; text-align:center;">${label}</div><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--body); font-size:6.6px; color:#8c6aa3; text-align:center; line-height:1.2; margin-top:1px;">${sub}</div></foreignObject>`;
+}
+function statusNodeSide(x,y,label,sub,color){
+  return `${archDot(x,y,9,color)}<foreignObject x="${x+15}" y="${y-12}" width="140" height="32"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--display); font-weight:700; font-size:8.2px; color:${color}; text-align:left;">${label}</div><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--body); font-size:6.4px; color:#8c6aa3; text-align:left; line-height:1.2; margin-top:1px;">${sub}</div></foreignObject>`;
+}
+const archStyle = `<style>
+@keyframes nodePulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.1);}}
+.arch-icon svg{width:13px;height:13px;color:#fff;}
+.arch-flow{stroke-dasharray:5 7; animation:archFlow 1.6s linear infinite;}
+@keyframes archFlow{to{stroke-dashoffset:-48;}}
+</style>`;
+
+const cyclePage1 = `
+<div class="pad" style="padding:18px 26px 10px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">REACTIVE PIPELINE</div>
+  <h1 class="title title-light" style="font-size:23px; margin-top:2px;" data-anim style="--d:1">Reactive Decision Cycle</h1>
+  <div class="lede" style="font-size:10px; margin-top:2px;" data-anim style="--d:2">From observation to remediation with layered validation and risk-aware execution.</div>
+
+  <div style="margin-top:14px; position:relative; height:470px;" data-anim style="--d:3">
+    <svg viewBox="0 0 1260 470" style="position:absolute; top:0; left:0; width:100%; height:470px; pointer-events:none;">
+      <path d="M55,195 L127,325 L199,195 L271,325 L343,195 L415,325 L520,215" fill="none" stroke="rgba(75,9,118,.18)" stroke-width="2"/>
+      <path d="M55,195 L127,325 L199,195 L271,325 L343,195 L415,325 L520,215" class="arch-flow" fill="none" stroke="${archColor.gold}" stroke-width="2" opacity=".7"/>
+      <path d="M860,200 L950,290 L1040,200 L1130,290" fill="none" stroke="rgba(75,9,118,.18)" stroke-width="2"/>
+      <path d="M860,200 L950,290 L1040,200 L1130,290" class="arch-flow" fill="none" stroke="${archColor.gold}" stroke-width="2" opacity=".7"/>
+
+      <path d="M520,178 Q580,130 600,120" fill="none" stroke="${archColor.green}" stroke-width="2.5"/>
+      <path d="M520,192 Q560,188 585,193" fill="none" stroke="${archColor.gold}" stroke-width="2.5"/>
+      <path d="M520,252 Q580,320 640,367" fill="none" stroke="${archColor.red}" stroke-width="2.5"/>
+
+      <path d="M735,112 Q810,105 835,180" fill="none" stroke="${archColor.green}" stroke-width="2.5"/>
+      <path d="M735,197 Q800,200 825,203" fill="none" stroke="${archColor.gold}" stroke-width="2.5"/>
+
+      <path d="M690,219 Q700,300 650,367" fill="none" stroke="${archColor.red}" stroke-width="2.2" stroke-dasharray="5 5"/>
+      <path d="M660,175 Q380,20 55,172" fill="none" stroke="${archColor.gold}" stroke-width="2" stroke-dasharray="5 5"/>
+
+      <line x1="730" y1="390" x2="820" y2="390" stroke="rgba(75,9,118,.18)" stroke-width="2"/>
+      <line x1="820" y1="390" x2="980" y2="390" stroke="rgba(75,9,118,.18)" stroke-width="2"/>
+      <path d="M980,390 Q1040,390 1080,357" fill="none" stroke="${archColor.green}" stroke-width="2"/>
+      <path d="M980,390 L1080,390" fill="none" stroke="${archColor.gold}" stroke-width="2"/>
+      <path d="M980,390 Q1040,390 1080,423" fill="none" stroke="${archColor.purple}" stroke-width="2"/>
+
+      ${statusNode(820,390,'Pending','Ticket created via SSE + email/Teams/Slack',archColor.red)}
+      ${statusNode(900,390,'Acknowledged','Operator takes ownership',archColor.red)}
+      ${statusNode(980,390,'In Progress','Investigation underway',archColor.red)}
+      ${statusNodeSide(1080,357,'Fixed','Resolved, counter reset',archColor.green)}
+      ${statusNodeSide(1080,390,'Not Fixed','Stays open, manual follow-up',archColor.goldText)}
+      ${statusNodeSide(1080,423,'Need Help','Reassigned to a senior operator',archColor.purple)}
+    </svg>
+
+    ${archMain.map(c=>archCard(c[0],c[1],c[2],c[3],c[4],c[5])).join('')}
+    ${archTail.map(c=>archCard(c[0],c[1],c[2],c[3],c[4],c[5])).join('')}
+
+    ${branchCard(660,105,150,48,'bolt','Automatic','Low risk → straight to Execution',archColor.green)}
+    ${branchCard(660,195,150,48,'user','Admin approval','Dashboard card, 10-minute timeout',archColor.gold)}
+    ${branchCard(650,390,160,46,'warning','Escalation','Creates an incident ticket',archColor.red)}
+
+    <div style="position:absolute; left:757px; top:120px; width:100px; font-family:var(--body); font-size:6.8px; color:${archColor.green}; text-align:left;">Approved</div>
+    <div style="position:absolute; left:520px; top:48px; width:130px; font-family:var(--body); font-size:6.8px; color:${archColor.goldText}; text-align:center;">Rejected → back to step 1</div>
+    <div style="position:absolute; left:705px; top:280px; width:90px; font-family:var(--body); font-size:6.8px; color:${archColor.red}; text-align:left;">Timeout</div>
+
+    <div style="position:absolute; left:420px; top:445px; width:440px; text-align:center; font-family:var(--body); font-size:8px; font-style:italic; color:#8c6aa3;">Duplicate incidents reuse the existing active ticket.</div>
+  </div>
+</div>
+${archStyle}
+`;
+
+S.push({cls:'slide-light', html:cyclePage1});
+
+/* ---- 11.5 GARDE-FOUS & VALIDATION HUMAINE ---- */
+function ruleItem(i,text){
+  return `<div data-anim style="--d:${i}; display:flex; gap:10px; align-items:flex-start; margin-bottom:13px;">
+    <div class="icon-circle" style="background:var(--blue); width:26px; height:26px; flex:none; margin-top:1px;">${ICONS.shield}<style>.icon-circle svg{width:13px;height:13px;}</style></div>
+    <div style="font-size:11.5px; line-height:1.4; color:var(--ink);">${text}</div>
+  </div>`;
+}
+const gardeFousPage1 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · 4/4</div>
+  <h1 class="title title-light" style="font-size:29px;" data-anim style="--d:1">Garde-fous fixes & validation humaine</h1>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:22px;">
+    <div data-anim style="--d:2">
+      <div class="eyebrow eyebrow-light" style="font-size:11px;">LE POLICY ENGINE — DES RÈGLES QUE L'IA NE PEUT PAS CASSER</div>
+      <div style="margin-top:12px;">
+        ${ruleItem(3,"Action inconnue ou non reconnue → bloquée d'office")}
+        ${ruleItem(4,'OOM (mémoire saturée) → toujours augmenter la mémoire, jamais autre chose')}
+        ${ruleItem(5,'Pod géré par un Deployment → jamais de suppression directe, on redémarre proprement')}
+        ${ruleItem(6,"Pod isolé non géré → jamais de suppression automatique, on escalade")}
+        ${ruleItem(7,'En production → suppression interdite, risque élevé obligatoire')}
+        ${ruleItem(8,'Même action déjà échouée 2 fois → on arrête et on escalade')}
+      </div>
+    </div>
+    <div data-anim style="--d:3">
+      <div class="eyebrow eyebrow-light" style="font-size:11px;">SCORE DE RISQUE → VALIDATION HUMAINE SI BESOIN</div>
+      <div class="card card-dark" style="margin-top:12px; padding:18px 20px;">
+        <div style="font-size:11px; color:#dac2e6; line-height:1.7;">
+          Type d'action <span style="color:var(--teal)">×</span> Niveau du cluster <span style="color:var(--teal)">×</span> Rayon d'impact<br>
+          <span style="color:var(--teal)">×</span> Réversibilité <span style="color:var(--teal)">×</span> Confiance de l'IA <span style="color:var(--teal)">×</span> Coût
+        </div>
+      </div>
+      <div class="lede" style="font-size:11.5px; margin-top:14px; line-height:1.55;">Si le score dépasse le seuil — ou si le Guardian juge l'action « dangereuse » — une carte d'approbation apparaît dans le tableau de bord. L'opérateur a <b>10 minutes</b> pour décider ; sans réponse, l'action est automatiquement refusée.</div>
+    </div>
+  </div>
+  <div class="lede" style="font-style:italic; color:var(--blue-dark); margin-top:14px; font-size:11px;" data-anim style="--d:9">→ La page suivante liste l'ensemble des garde-fous techniques, au-delà du seul Policy Engine.</div>
+</div>
+`;
+
+function guardItem(title,desc){
+  return `<div style="background:#fff; border:1px solid rgba(75,9,118,.15); border-radius:8px; padding:5px 8px;">
+    <div style="font-size:7.6px; font-weight:700; color:var(--ink); margin-bottom:2px;">${title}</div>
+    <div style="font-size:6.6px; color:var(--muted); line-height:1.35;">${desc}</div>
+  </div>`;
+}
+const gardeFousPage2 = `
+<div class="pad" style="padding:20px 46px 10px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · 4/4 · SUITE</div>
+  <h1 class="title title-light" data-anim style="--d:1;font-size:19px; margin-top:2px;">Tous les garde-fous, au-delà du Policy Engine</h1>
+  <div style="margin-top:10px;" data-anim style="--d:2">
+    <div class="flow-box" style="display:flex; justify-content:center;"><div class="flow-box-inner" style="border:2px solid var(--blue); background:rgba(244,193,11,.06); border-radius:13px; padding:10px 20px 11px;">
+      <div style="text-align:center; font-family:var(--display); font-weight:700; font-size:12.5px; color:var(--ink);">PolicyEngine — 10 règles déterministes, non-bypassables par le LLM</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 30px; margin-top:7px;">
+        <div style="font-size:9px; color:var(--ink); line-height:1.65;">• Action hors liste blanche → rejetée d'office<br>• OOMKilled → seul increase_memory autorisé<br>• Controller existant → delete_pod interdit<br>• ImagePullBackOff → seul noop autorisé</div>
+        <div style="font-size:9px; color:var(--ink); line-height:1.65;">• Cluster critique → approbation humaine forcée<br>• Pod d'un Job → seul noop (les Jobs ne se réparent pas)<br>• Déploiement récent avant panne → force un rollback<br>• scale_down interdit sur DaemonSet</div>
+      </div>
+    </div></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-top:12px;">
+      ${guardItemLg('Guardian Agent','2ᵉ LLM indépendant du Planner — DANGEROUS force l\'approbation humaine même si le risque calculé était LOW.')}
+      ${guardItemLg('Risk Engine','Score au-delà du seuil du tier (plus strict en prod qu\'en dev) → risque escaladé à HIGH.')}
+      ${guardItemLg('Run lock','1 seul cycle à la fois par cluster — le suivant est ignoré plutôt que lancé en parallèle.')}
+      ${guardItemLg('Resource lock','1 seule pipeline à la fois par ressource (namespace/deployment) — le second incident attend.')}
+      ${guardItemLg('Cooldown 45s','Attente entre deux tentatives sur le même incident — évite les boucles d\'actions qui empirent la situation.')}
+      ${guardItemLg('MAX_FIX_ATTEMPTS = 3','Après 3 tentatives sans résolution, le système arrête et escalade à un humain.')}
+      ${guardItemLg('Single-node guard','Avant cordon/drain, vérifie qu\'il reste un autre nœud schedulable — bloqué si c\'est le seul nœud (cas minikube).')}
+      ${guardItemLg('Silence Store','Un opérateur peut silencer une alerte depuis le dashboard — le cycle ignore l\'incident pendant ce temps.')}
+      ${guardItemLg('Sanitizer de commande','Avant tout kubectl, vérifie l\'absence de caractères d\'injection shell (; | $ backticks guillemets).')}
+    </div>
+    <div style="text-align:center; font-style:italic; color:var(--blue-dark); font-size:11px; margin-top:11px;">→ Son rôle : garantir que le système ne peut jamais aggraver une situation, même si le LLM se trompe, hallucine une action, ou qu'un cas extrême non prévu survient.</div>
+  </div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[gardeFousPage1, gardeFousPage2]});
+
+/* ---- 11.7 ESCALADES ---- */
+const escaladesPage1 = `
+<div class="pad" style="padding:22px 50px 12px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE RÉACTIVE · BONUS</div>
+  <h1 class="title title-light" style="font-size:24px;" data-anim style="--d:1">Escalades : le filet de sécurité humain</h1>
+  <div class="lede" style="font-size:11px; margin-top:3px;" data-anim style="--d:2">Quand l'IA ne parvient pas à résoudre un problème, KubePilot ne s'acharne pas indéfiniment.</div>
+  <div style="margin-top:13px;" data-anim style="--d:3">
+    ${flowBoxLg('Déclenchement automatique','trois situations',['3 tentatives sans succès sur le même incident','Action HIGH risk / UNCERTAIN sans approbation à temps','Planner retourne noop sur un incident actif'])}
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+      ${pipelinePhaseLg('Contenu de l\'escalade','Cluster, namespace, nœud concerné, type d\'incident, nombre de tentatives, timeline complète (action, résultat, heure), analyse RCA de l\'InvestigatorAgent, logs de l\'incident.')}
+      ${pipelinePhaseLg('Workflow de prise en charge','pending → acknowledged → in_progress → fixed / not_fixed / need_help. Un opérateur acquitte, peut réassigner à un autre membre, et met à jour le statut au fil de l\'investigation.')}
+      ${pipelinePhaseLg('Dédoublonnage','Si le même incident redéclenche (le cycle tourne toutes les 30s), aucun doublon n\'est créé — le système vérifie qu\'une escalade active existe déjà pour cette clé d\'incident.')}
+      ${pipelinePhaseLg('Notifications','SSE immédiat vers le dashboard, puis email à l\'assigné, Teams ou Slack selon la configuration. Rate-limit de 30 minutes par escalade pour éviter le spam.')}
+    </div>
+    <div style="text-align:center; font-size:10.5px; color:var(--ink); margin-top:11px;"><b>Réinitialisation du compteur</b> — après l'escalade, le compteur de tentatives repart à zéro ; le système ne réescalade pas immédiatement, il laisse le temps à l'humain d'intervenir.</div>
+    <div style="text-align:center; font-style:italic; color:var(--blue-dark); font-size:10.5px; margin-top:8px;">→ Son rôle : le filet de sécurité final. Quand l'autonomie atteint sa limite, KubePilot ne disparaît pas silencieusement — il passe la main à un humain avec un dossier complet, au bon moment.</div>
+    <div style="margin-top:10px;" data-anim style="--d:9">
+      ${shotPlaceholder("EscalationsPage", 75)}
+    </div>
+  </div>
+</div>
+`;
+
+S.push({cls:'slide-light', html:escaladesPage1});
+
+/* ---- 11.9 TOUTES LES PAGES DU DASHBOARD ---- */
+function dashPage(i,icon,name,desc){
+  return `<div data-anim style="--d:${i}; display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; background:rgba(75,9,118,.04); margin-bottom:6px;">
+    <div style="width:22px;height:22px;border-radius:6px;background:var(--navy);flex:none;display:flex;align-items:center;justify-content:center;color:#fff;"><div style="width:11px;height:11px;">${ICONS[icon]}</div></div>
+    <div><div style="font-size:10px;font-weight:700;color:var(--ink);">${name}</div><div style="font-size:7.8px;color:var(--muted);line-height:1.25;">${desc}</div></div>
+  </div>`;
+}
+function dashRoleHeader(bg,fg,label){
+  return `<div style="background:${bg}; color:${fg}; font-family:var(--mono); font-weight:700; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; text-align:center; border-radius:8px; padding:6px; margin-bottom:10px;">${label}</div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 1/5</div>
+  <h1 class="title title-light" data-anim style="--d:1">13 pages, 3 rôles</h1>
+  <div class="lede" style="font-size:12px; margin-top:4px; max-width:800px;" data-anim style="--d:2">Chaque page du dashboard répond à un besoin précis de l'opérateur.</div>
+  <div class="grid g3" style="margin-top:16px; gap:20px;">
+    <div>
+      ${dashRoleHeader('var(--blue)','var(--navy)','Observer')}
+      ${dashPage(3,'eye','Dashboard',"État global de la flotte de clusters")}
+      ${dashPage(4,'server','Cluster Health',"Pods par namespace, état des nœuds")}
+      ${dashPage(5,'robot','Agents',"Logs en direct du système")}
+      <div style="margin-top:8px;" data-anim style="--d:16">${shotPlaceholder("ProfilePage", 70)}</div>
+    </div>
+    <div>
+      ${dashRoleHeader('#8c6aa3','#fff','Intervenir')}
+      ${dashPage(6,'route','Escalations',"Incidents assignés à l'équipe")}
+      ${dashPage(7,'clipboard','Historique',"Audit log de toutes les actions")}
+      ${dashPage(8,'shield','Tableau de bord',"Approuver ou refuser en temps réel")}
+    </div>
+    <div>
+      ${dashRoleHeader('var(--navy)','#fff','Configurer')}
+      ${dashPage(9,'question','Chat AI',"Dialogue avec le cluster")}
+      ${dashPage(10,'lock','RBAC',"Gestion des rôles Kubernetes")}
+      ${dashPage(11,'user','Utilisateurs',"Accès et permissions")}
+      ${dashPage(12,'hands','Équipes',"Groupes avec permissions héritées")}
+      ${dashPage(13,'network','Notifications',"Canaux et routage des alertes")}
+      ${dashPage(14,'chart','Capacité',"Ressources et coûts")}
+      ${dashPage(15,'user','Profil',"Préférences personnelles")}
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 12. TABLEAU DE BORD ---- */
+S.push({cls:'slide-light', html:`
+<div class="pad" style="padding-top:22px; padding-bottom:12px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 2/5</div>
+  <h1 class="title title-light" style="font-size:26px;" data-anim style="--d:1">Intervenir au bon moment</h1>
+  <div class="card card-dark" style="margin-top:12px; padding:10px 16px; display:flex; align-items:center; gap:10px;" data-anim style="--d:2">
+    ${iconCircle('sync','bg-blue')}
+    <div style="font-size:11px; color:#dac2e6;"><b style="color:#fff;">Connexion SSE permanente</b> — le serveur pousse les événements vers le dashboard, sans rafraîchissement manuel.</div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1.15fr; gap:22px; margin-top:14px;">
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Ce que l'opérateur voit en temps réel</div>
+      <div class="lede" style="font-size:11px; line-height:1.7; margin-bottom:14px;">
+        • Alertes d'incidents actifs<br>
+        • Demandes d'approbation avec délai<br>
+        • Résolutions et échecs
+      </div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Historique</div>
+      <div class="lede" style="font-size:11px; line-height:1.7;">
+        • Toutes les actions : success / failure / blocked<br>
+        • Qui a approuvé, quand, pourquoi
+      </div>
+    </div>
+    <div>
+      <div style="background:var(--navy); border-radius:12px; padding:14px 18px; color:#fff;" data-anim style="--d:3">
+        <div style="font-family:var(--mono); font-size:9px; color:#dac2e6; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px;">Carte d'approbation</div>
+        <div style="font-size:10.5px; line-height:1.85; font-family:var(--mono);">
+          <div><span style="color:#8c6aa3;">Action</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; increase_memory</div>
+          <div><span style="color:#8c6aa3;">Pod</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; api-service / production</div>
+          <div><span style="color:#8c6aa3;">Justification</span> OOMKilled, exitCode=137</div>
+          <div><span style="color:#8c6aa3;">Risque</span> &nbsp;&nbsp;&nbsp;&nbsp; <b style="color:#e2555a;">HIGH</b></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
+          <div style="background:#2e9e5b; padding:6px 13px; border-radius:6px; font-size:10px; font-weight:700;">✓ Approuver</div>
+          <div style="background:#b8433a; padding:6px 13px; border-radius:6px; font-size:10px; font-weight:700;">✗ Refuser</div>
+          <div style="font-size:9px; color:#dac2e6; margin-left:auto;">Expire dans 4:32</div>
+        </div>
+      </div>
+      <div class="lede" style="font-size:10px; margin-top:8px; line-height:1.5;" data-anim style="--d:4">
+        → Décision enregistrée avec l'identité de l'opérateur.<br>
+        → Sans réponse dans le délai → action annulée.
+      </div>
+      <div class="grid g2" style="margin-top:10px; gap:10px;" data-anim style="--d:5">
+        ${taskCard(6,'clipboard','bg-teal','Refus motivé',"En refusant, l'opérateur explique pourquoi — KubePilot apprend de ce retour pour ses prochaines décisions.")}
+        ${taskCard(7,'lock','bg-teal','Mise en silence',"Une alerte récurrente peut être silencée pour une durée choisie, le temps d'une maintenance.")}
+      </div>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:12px; gap:14px;" data-anim style="--d:8">
+    ${shotPlaceholder("DashboardPage — agents log, approbations, escalades, order chat", 85)}
+    ${shotPlaceholder("HistoryPage — audit log de toutes les actions", 85)}
+  </div>
+</div>
+`});
+
+/* ---- 12.5 CHAT AI ---- */
+function toolItem(i,cmd,desc){
+  return `<div data-anim style="--d:${i}; background:rgba(75,9,118,.04); border-radius:8px; padding:6px 10px;">
+    <div style="font-family:var(--mono); font-size:9.5px; font-weight:700; color:var(--navy);">${cmd}</div>
+    <div style="font-size:8.5px; color:var(--muted);">${desc}</div>
+  </div>`;
+}
+const chatAIPage1 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 3/5</div>
+  <h1 class="title title-light" style="font-size:22px;" data-anim style="--d:1">Poser une question, obtenir une réponse depuis le cluster réel</h1>
+  <div style="display:grid; grid-template-columns:1fr 1.1fr; gap:26px; margin-top:16px;">
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">Comment ça marche</div>
+      <div style="display:flex; flex-direction:column; gap:8px;" data-anim style="--d:2">
+        <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--ink);">1. L'opérateur écrit en langage naturel</div>
+        <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--ink);">2. Le LLM choisit seul quels outils appeler</div>
+        <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--ink);">3. Il exécute les requêtes sur le cluster</div>
+        <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--ink);">4. Il répond avec les données réelles</div>
+      </div>
+      <div class="card card-dark" style="margin-top:16px; padding:12px 16px;" data-anim style="--d:6">
+        <div style="font-family:var(--mono); font-size:8.5px; color:#dac2e6; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;">Exemple</div>
+        <div style="font-size:10.5px; color:#fff; font-style:italic; margin-bottom:6px;">« Pourquoi le pod payment-api crashe ? »</div>
+        <div style="font-size:9.5px; color:#dac2e6; line-height:1.5;">→ le LLM appelle get_pod_logs + get_pod_events<br>→ analyse et explique en français</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">8 outils disponibles</div>
+      <div class="grid g2" style="gap:8px;">
+        ${toolItem(3,'get_pod_logs','Logs d\'un pod')}
+        ${toolItem(4,'describe_pod','kubectl describe')}
+        ${toolItem(5,'get_pod_events','Events d\'un pod')}
+        ${toolItem(6,'list_pods','Pods d\'un namespace')}
+        ${toolItem(7,'get_node_status','CPU / mémoire / conditions')}
+        ${toolItem(8,'query_prometheus','Requête PromQL libre')}
+        ${toolItem(9,'get_escalations','Incidents en attente')}
+        ${toolItem(10,'get_deployments','Deployments et replicas')}
+      </div>
+      <div style="margin-top:14px;" data-anim style="--d:11">
+        ${taskCard(12,'clipboard','bg-blue','Rapport PDF',"Généré à la demande — résumé, incidents, métriques, recommandations. Téléchargeable directement.")}
+      </div>
+      <div style="margin-top:10px;" data-anim style="--d:13">
+        ${shotPlaceholder("ChatPage", 90)}
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+const chatAIPage2 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 3/5 · SUITE</div>
+  <h1 class="title title-light" style="font-size:24px;" data-anim style="--d:1">Chat de commandes : agir en langage naturel</h1>
+  <div class="lede" style="font-size:12.5px; margin-top:4px; max-width:820px;" data-anim style="--d:2">Le même chat peut aussi créer ou modifier des ressources — avec les mêmes garde-fous que le pipeline autonome.</div>
+  <div class="grid g4" style="margin-top:26px; gap:16px;">
+    ${taskCard(3,'gavel','bg-blue','Demande d\'action',"L'opérateur demande de créer ou modifier une ressource, en langage naturel.")}
+    ${taskCard(4,'lock','bg-blue','Vérification des droits',"S'il n'est pas autorisé, le chat le dit clairement : une autorisation est nécessaire.")}
+    ${taskCard(5,'question','bg-teal','Complément d\'information',"S'il manque des informations, il continue à les demander jusqu'à avoir tout ce qu'il faut.")}
+    ${taskCard(6,'shield','bg-teal','Approbation avant action',"Avant toute exécution, il attend la confirmation explicite de l'opérateur.")}
+  </div>
+  <div class="lede" style="font-style:italic; margin-top:22px; font-size:12px;" data-anim style="--d:9">→ Comme le pipeline autonome, le chat de commandes ne contourne ni les permissions RBAC, ni la validation humaine.</div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[chatAIPage1, chatAIPage2]});
+
+/* ---- 13. SECURITE (AUTHENTIFICATION) ---- */
+const securityPage1 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 4/5</div>
+  <h1 class="title title-light" data-anim style="--d:1">Deux niveaux de contrôle indépendants</h1>
+  <div class="lede" style="font-size:12.5px; margin-top:6px; max-width:800px;" data-anim style="--d:2">L'authentification KubePilot d'un côté, les permissions Kubernetes natives de l'autre — jamais confondues.</div>
+  <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:22px; margin-bottom:10px;">Authentification KubePilot</div>
+  <div class="grid g2" style="gap:16px;">
+    ${taskCard(3,'lock','bg-blue','Identité',"Email / mot de passe + JWT. Deux rôles applicatifs : admin ou developer.")}
+    ${taskCard(4,'sitemap','bg-blue','Permissions granulaires',"Par cluster ET par namespace — ex. viewer sur prod, editor sur dev, pour le même utilisateur.")}
+    ${taskCard(5,'hands','bg-teal','Groupes',"Une permission assignée à l'équipe : tous les membres l'héritent automatiquement.")}
+    ${taskCard(6,'shield','bg-teal','Deux couches indépendantes',"L'auth KubePilot contrôle l'accès à l'app ; le RBAC Kubernetes (page suivante) contrôle l'accès au cluster.")}
+  </div>
+  <div class="grid g3" style="margin-top:16px; gap:12px;" data-anim style="--d:7">
+    ${shotPlaceholder("LoginPage", 85)}
+    ${shotPlaceholder("UsersPage", 85)}
+    ${shotPlaceholder("TeamsPage", 85)}
+  </div>
+</div>
+`;
+
+const securityPage2 = `
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 4/5 · SUITE</div>
+  <h1 class="title title-light" style="font-size:24px;" data-anim style="--d:1">Gestion RBAC Kubernetes</h1>
+  <div class="lede" style="font-size:12px; margin-top:4px;" data-anim style="--d:2">Une page dédiée pour administrer les permissions natives du cluster, sans quitter KubePilot.</div>
+  <div class="grid g4" style="margin-top:18px; gap:14px;">
+    ${taskCard(3,'eye','bg-blue','Visualiser',"Roles, ClusterRoles, Bindings, ServiceAccounts de chaque cluster.")}
+    ${taskCard(4,'gavel','bg-blue','Créer / modifier',"Suppression comprise — via un éditeur YAML intégré.")}
+    ${taskCard(5,'shield','bg-teal','Dry-run',"Simulation avant application réelle, pour éviter les erreurs.")}
+    ${taskCard(6,'clipboard','bg-teal','Audit log',"Qui a fait quoi, quand, sur quel cluster — traçabilité complète.")}
+  </div>
+  <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:24px; margin-bottom:10px;">Impersonation</div>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;" data-anim style="--d:7">
+    <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 14px; font-size:10.5px; color:var(--ink);">Commande envoyée par un non-admin</div>
+    <span style="color:rgba(75,9,118,.35);">→</span>
+    <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 14px; font-size:10.5px; color:var(--ink); font-family:var(--mono);">exécutée avec --as=email@user.com</div>
+    <span style="color:rgba(75,9,118,.35);">→</span>
+    <div style="background:rgba(75,9,118,.05); border-radius:8px; padding:8px 14px; font-size:10.5px; color:var(--ink);">Kubernetes applique ses propres règles RBAC</div>
+  </div>
+  <div class="lede" style="font-style:italic; margin-top:14px; font-size:11.5px;" data-anim style="--d:8">→ KubePilot ne donne jamais de droits supplémentaires : chaque utilisateur reste borné par ses permissions RBAC natives.</div>
+  <div style="margin-top:10px;" data-anim style="--d:9">
+    ${shotPlaceholder("RbacPage", 80)}
+  </div>
+</div>
+`;
+
+S.push({cls:'slide-light', pages:[securityPage1, securityPage2]});
+
+/* ---- 13.3 NOTIFICATIONS ---- */
+function severityRow(i,level,color,channels){
+  return `<div data-anim style="--d:${i}; display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:8px; background:rgba(75,9,118,.03);">
+    <div style="width:78px; font-family:var(--mono); font-size:9px; font-weight:700; color:${color};">${level}</div>
+    <div style="font-size:10px; color:var(--ink);">${channels}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">PARTIE ACTIVE · 5/5</div>
+  <h1 class="title title-light" style="font-size:23px;" data-anim style="--d:1">Les bonnes personnes alertées sur le bon canal</h1>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-top:16px;">
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">4 canaux</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;" data-anim style="--d:2">
+        <div style="background:var(--blue); color:var(--navy); border-radius:7px; padding:6px 12px; font-size:10px; font-weight:700;">In-App</div>
+        <div style="background:#8c6aa3; color:#fff; border-radius:7px; padding:6px 12px; font-size:10px; font-weight:700;">Email</div>
+        <div style="background:var(--navy); color:#fff; border-radius:7px; padding:6px 12px; font-size:10px; font-weight:700;">Microsoft Teams</div>
+        <div style="background:#4a154b; color:#fff; border-radius:7px; padding:6px 12px; font-size:10px; font-weight:700;">Slack</div>
+      </div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Routage par sévérité</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${severityRow(3,'INFO','#2e9e5b','In-App seulement')}
+        ${severityRow(4,'WARNING','#c2a100','In-App + Teams')}
+        ${severityRow(5,'ERROR','#d9622e','In-App + Teams + Email')}
+        ${severityRow(6,'CRITICAL','#b8433a','Tous les canaux')}
+      </div>
+    </div>
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Événements notifiés</div>
+      <div class="lede" style="font-size:10.5px; line-height:1.7; margin-bottom:14px;">
+        • Nouvelle escalation créée<br>
+        • Approbation demandée<br>
+        • Incident résolu<br>
+        • Assignation à un utilisateur<br>
+        • Demande de réassignation
+      </div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Configuration</div>
+      <div class="lede" style="font-size:10.5px; line-height:1.7;">
+        • Par canal : activé / désactivé<br>
+        • Configs stockées chiffrées (AES-GCM)<br>
+        • Par utilisateur : canaux + catégories choisis<br>
+        • Rate-limit : max 1 notif Teams / 30 min / escalation<br>
+        • Log de livraison : SENT / FAILED / RETRYING
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:14px;" data-anim style="--d:10">
+    ${shotPlaceholder("NotificationsSettingsPage", 80)}
+  </div>
+</div>
+`});
+
+/* ---- 13.5 PRÉVISION DE CAPACITÉ ---- */
+function costItem(i,label,formula){
+  return `<div data-anim style="--d:${i}; background:rgba(75,9,118,.04); border-radius:9px; padding:9px 12px;">
+    <div style="font-family:var(--display); font-weight:700; font-size:11px; color:var(--ink); margin-bottom:2px;">${label}</div>
+    <div style="font-size:9px; color:var(--muted); font-family:var(--mono); line-height:1.3;">${formula}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">ROBUSTESSE · 1/2</div>
+  <h1 class="title title-light" style="font-size:23px;" data-anim style="--d:1">Visualiser les ressources et anticiper les coûts</h1>
+  <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:16px; margin-bottom:8px;">Monitoring</div>
+  <div class="lede" style="font-size:11px; line-height:1.6;" data-anim style="--d:2">CPU et mémoire par nœud · time range 1h / 6h / 24h / 7j / personnalisé · intervalle de bucket 30s → 1h (slider).</div>
+  <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:16px; margin-bottom:8px;">Estimation des coûts</div>
+  <div class="grid g4" style="gap:10px;">
+    ${costItem(3,'VM','taille du nœud × prix horaire Azure')}
+    ${costItem(4,'Disques','PersistentVolumes × prix/Go')}
+    ${costItem(5,'Load Balancer','services LoadBalancer × coût horaire')}
+    ${costItem(6,'Egress','trafic réseau sortant × tarif/Go')}
+  </div>
+  <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:16px; margin-bottom:8px;">Forecast</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; align-items:center;">
+    <div class="lede" style="font-size:11px; line-height:1.7;" data-anim style="--d:7">• Collecte de métriques historiques<br>• Calcul de tendance par ressource<br>• Alerte si épuisement prédit</div>
+    <div class="card card-dark" style="padding:12px 16px;" data-anim style="--d:8">
+      <div style="font-family:var(--mono); font-size:10.5px; color:#fff; line-height:1.6;">Memory node-2 : 78%, +3%/h<br>→ <b style="color:var(--teal);">épuisement dans 7h26</b></div>
+    </div>
+    <div data-anim style="--d:9">
+      ${shotPlaceholder("CapacityPage", 90)}
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 13.7 RÉSILIENCE DE L'IA ---- */
+function fallbackRow(i,situation,action){
+  return `<div data-anim style="--d:${i}; display:flex; align-items:center; gap:8px; padding:5px 9px; border-radius:7px; background:rgba(75,9,118,.03);">
+    <div style="flex:1; font-family:var(--mono); font-size:9px; color:var(--ink);">${situation}</div>
+    <span style="color:rgba(75,9,118,.35); font-size:10px;">→</span>
+    <div style="font-family:var(--mono); font-size:9px; font-weight:700; color:var(--navy);">${action}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">ROBUSTESSE · 2/2</div>
+  <h1 class="title title-light" style="font-size:22px;" data-anim style="--d:1">Le système reste stable même quand l'IA échoue</h1>
+  <div class="card card-dark" style="margin-top:10px; padding:10px 16px;" data-anim style="--d:2">
+    <div style="font-size:10.5px; color:#dac2e6;"><b style="color:#fff;">Problème</b> — chaque incident déclenche jusqu'à 4 appels LLM. Que se passe-t-il si l'API est lente ou indisponible ?</div>
+  </div>
+  <div style="display:grid; grid-template-columns:1.1fr 1fr; gap:22px; margin-top:14px;">
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Retry + backoff exponentiel (3 tentatives)</div>
+      <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:8px;" data-anim style="--d:3">
+        <div style="background:rgba(46,158,91,.12); border:1px solid rgba(46,158,91,.35); border-radius:7px; padding:6px 9px; font-size:9px; font-weight:700; color:#2e9e5b;">Tentative 1</div>
+        <span style="font-size:8px; color:var(--muted);">attendre 1s</span><span style="color:rgba(75,9,118,.35); font-size:9px;">→</span>
+        <div style="background:rgba(194,161,0,.12); border:1px solid rgba(194,161,0,.35); border-radius:7px; padding:6px 9px; font-size:9px; font-weight:700; color:#8a6a0a;">Tentative 2</div>
+        <span style="font-size:8px; color:var(--muted);">attendre 2s</span><span style="color:rgba(75,9,118,.35); font-size:9px;">→</span>
+        <div style="background:rgba(184,67,58,.12); border:1px solid rgba(184,67,58,.35); border-radius:7px; padding:6px 9px; font-size:9px; font-weight:700; color:#b8433a;">Tentative 3</div>
+      </div>
+      <div class="lede" style="font-size:9.5px; line-height:1.4; margin-bottom:14px;">Tentative 3 → <b style="color:var(--ink);">CircuitOpenError</b> → fallback activé.</div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Dégradation des autres composants</div>
+      <div class="lede" style="font-size:10px; line-height:1.6;" data-anim style="--d:9">• Prometheus indisponible → continue sans métriques<br>• Qdrant indisponible → recherche structurelle seule<br>• Réponse LLM invalide → noop automatique, pas de crash</div>
+    </div>
+    <div>
+      <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Fallback déterministe — zéro appel réseau</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${fallbackRow(4,'CrashLoopBackOff','restart')}
+        ${fallbackRow(5,'OOMKilled','restart (+ escalade humaine)')}
+        ${fallbackRow(6,'ImagePullBackOff','noop')}
+        ${fallbackRow(7,'NodeNotReady','cordon_node')}
+        ${fallbackRow(8,'Tout le reste','noop')}
+      </div>
+      <div class="card" style="margin-top:16px; padding:12px 16px; background:var(--blue);" data-anim style="--d:10">
+        <div style="font-size:11px; font-style:italic; color:var(--navy); text-align:center;">« En cas de doute → noop, jamais une action risquée. »</div>
+      </div>
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 14. METHODOLOGIE ---- */
+function methodStep(i,n,title,text){
+  return `<div data-anim style="--d:${i}; display:grid; grid-template-columns:50px 280px 1fr; align-items:center; gap:18px; margin-bottom:24px;">
+    <div style="width:46px;height:46px;border-radius:50%; background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:700; font-size:18px;">${n}</div>
+    <div style="font-family:var(--display); font-weight:700; font-size:14.5px; color:var(--ink);">${title}</div>
+    <div class="lede" style="font-size:12px;">${text}</div>
+  </div>`;
+}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">ÉVALUATION · MÉTHODOLOGIE</div>
+  <h1 class="title title-light" data-anim style="--d:1">Comment mesurer l'efficacité de KubePilot ?</h1>
+  <div class="lede" style="font-style:italic; font-size:13.5px; margin-top:14px;" data-anim style="--d:2">Pour rester rigoureux, l'efficacité ne se résume pas à une seule note : elle se construit à partir d'un protocole de test reproductible.</div>
+  <div style="margin-top:28px;">
+    ${methodStep(3,1,'Catégories de scénarios',"Définir des familles d'incidents : crash de pod / OOM, échec de scheduling, saturation de ressources, dérive de configuration, violation RBAC.")}
+    ${methodStep(4,2,'Score pondéré par scénario','Chaque scénario est noté selon : détection correcte, diagnostic correct, action correcte, respect des règles de sécurité, temps de résolution.')}
+    ${methodStep(5,3,'Comparaison à une référence','Le résultat de KubePilot est comparé à une intervention manuelle de référence (baseline) sur les mêmes scénarios.')}
+    ${methodStep(6,4,'Agrégation en un score global',"Les scores pondérés sont agrégés pour obtenir un taux d'efficacité global et un taux par catégorie d'incident.")}
+  </div>
+</div>
+`});
+
+/* ---- 15. BENCHMARK RÉSULTATS ---- */
+const benchData = [
+  {label:'Healthy',    pct:100, color:'var(--blue)'},
+  {label:'Rollback',   pct:75,  color:'#8c6aa3'},
+  {label:'Cascade',    pct:69,  color:'#8c6aa3'},
+  {label:'Basic',      pct:56,  color:'#8c6aa3'},
+  {label:'Controller', pct:51,  color:'#8c6aa3'},
+  {label:'Behavior',   pct:49,  color:'#8c6aa3'},
+  {label:'Isolation',  pct:45,  color:'#8c6aa3'},
+];
+S.push({cls:'slide-light', html:`
+<div class="pad" style="padding-top:40px; padding-bottom:40px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">ÉVALUATION · BENCHMARK</div>
+  <h1 class="title title-light" style="font-size:28px;" data-anim style="--d:1">Résultats — 19 scénarios Kubernetes réels</h1>
+  <div style="display:grid; grid-template-columns:1.55fr 1fr; gap:22px; margin-top:18px;">
+    <div class="card" data-anim style="--d:2">
+      <div style="font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:16px;">Score pondéré par catégorie</div>
+      ${benchData.map((c,i)=>`
+        <div data-anim style="--d:${i+3}; display:grid; grid-template-columns:86px 1fr 40px; align-items:center; gap:10px; margin-bottom:11px;">
+          <div style="font-size:11.5px; color:var(--ink); font-weight:500;">${c.label}</div>
+          <div style="height:13px; border-radius:4px; background:rgba(75,9,118,.08); overflow:hidden;">
+            <div class="bench-bar" style="--bw:${c.pct}%; background:${c.color}; height:100%; border-radius:4px;"></div>
+          </div>
+          <div style="font-family:var(--mono); font-weight:700; font-size:11px; color:var(--ink); text-align:right;">${c.pct}%</div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div class="card card-dark" data-anim style="--d:3; text-align:center; padding:22px 16px;">
+        <div style="font-family:var(--display); font-weight:900; font-size:46px; color:var(--teal); line-height:1;">71,8%</div>
+        <div style="font-size:11px; color:#dac2e6; margin-top:4px;">Score pondéré global</div>
+        <div style="font-size:10px; color:#8c6aa3; margin-top:4px;">14 scénarios d'échec · 5 sains</div>
+      </div>
+      <div class="grid g2" style="gap:10px;" data-anim style="--d:5">
+        <div class="card" style="padding:12px 8px; text-align:center;">
+          <div style="font-family:var(--display); font-weight:800; font-size:22px; color:var(--navy);">100%</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">Détection</div>
+        </div>
+        <div class="card" style="padding:12px 8px; text-align:center;">
+          <div style="font-family:var(--display); font-weight:800; font-size:22px; color:var(--navy);">0%</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">Faux positifs</div>
+        </div>
+        <div class="card" style="padding:12px 8px; text-align:center;">
+          <div style="font-family:var(--display); font-weight:800; font-size:22px; color:var(--navy);">79%</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">Actions justes</div>
+        </div>
+        <div class="card" style="padding:12px 8px; text-align:center;">
+          <div style="font-family:var(--display); font-weight:800; font-size:22px; color:var(--navy);">71%</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">Résolution</div>
+        </div>
+      </div>
+      <div class="card" data-anim style="--d:6; padding:13px 16px; background:rgba(75,9,118,.06);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; color:var(--muted);">Latence moyenne</span>
+          <span style="font-family:var(--mono); font-weight:700; font-size:12px; color:var(--ink);">2 min 47 s</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:7px;">
+          <span style="font-size:11px; color:var(--muted);">P95</span>
+          <span style="font-family:var(--mono); font-weight:700; font-size:12px; color:var(--ink);">5 min 30 s</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.bench-bar{ width:0; }
+.slide.content-in .bench-bar{ animation:benchGrow .75s cubic-bezier(.2,.7,.2,1) forwards; animation-delay:.5s; }
+@keyframes benchGrow{ to{ width:var(--bw); } }
+</style>
+`});
+
+/* ---- 16. COUVERTURE TACHES ---- */
+const covCats = [
+  {label:'Surveillance continue',      pct:95, color:'var(--blue)'},
+  {label:'Documentation / reporting',  pct:90, color:'var(--blue)'},
+  {label:'Remédiation routinière',     pct:80, color:'#8c6aa3'},
+  {label:"Diagnostic d'incidents",     pct:75, color:'#8c6aa3'},
+  {label:'Capacity planning',          pct:65, color:'#8c6aa3'},
+  {label:'Gestion RBAC / sécurité',   pct:25, color:'rgba(194,58,58,.7)'},
+];
+S.push({cls:'slide-light', html:`
+<div class="pad" style="padding-top:40px; padding-bottom:40px;">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">RÉSULTATS · COUVERTURE FONCTIONNELLE</div>
+  <h1 class="title title-light" style="font-size:28px;" data-anim style="--d:1">Part du travail d'un expert K8s couverte par KubePilot</h1>
+  <div style="margin-top:22px;">
+    ${covCats.map((c,idx)=>`
+      <div data-anim style="--d:${idx+2}; display:grid; grid-template-columns:230px 1fr 52px; align-items:center; gap:16px; margin-bottom:14px;">
+        <div style="font-size:12.5px; color:var(--ink);">${c.label}</div>
+        <div style="height:16px; border-radius:5px; background:rgba(75,9,118,.08); overflow:hidden;">
+          <div class="bench-bar" style="--bw:${c.pct}%; background:${c.color}; height:100%; border-radius:5px;"></div>
+        </div>
+        <div style="font-family:var(--mono); font-weight:700; font-size:12px; color:var(--ink); text-align:right;">${c.pct} %</div>
+      </div>`).join('')}
+  </div>
+  <div class="card" style="background:var(--blue); margin-top:20px; padding:16px 22px;" data-anim style="--d:9">
+    <div style="font-size:12px; font-style:italic; color:var(--navy);">Estimation globale : KubePilot peut prendre en charge environ <b>50 à 55 %</b> des activités opérationnelles courantes d'un expert Kubernetes. Les tâches restantes concernent principalement l'architecture des clusters, la sécurité avancée, les déploiements applicatifs, l'administration de l'infrastructure et les décisions nécessitant une expertise humaine.</div>
+  </div>
+</div>
+`});
+
+/* ---- 17. LIMITES & PERSPECTIVES ---- */
+function listDot(t,color){return `<div style="display:flex; gap:10px; align-items:flex-start; margin-bottom:18px;"><div style="width:8px;height:8px;border-radius:50%;background:${color}; margin-top:6px; flex:none;"></div><div style="font-size:12.5px; line-height:1.45;">${t}</div></div>`;}
+S.push({cls:'slide-light', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-light" data-anim style="--d:0">REGARD CRITIQUE</div>
+  <h1 class="title title-light" data-anim style="--d:1">Limites et perspectives</h1>
+  <div class="grid g2" style="margin-top:30px;">
+    <div class="card" data-anim style="--d:2">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">${iconCircle('warning','bg-flag')}<div style="font-family:var(--display); font-weight:700; font-size:17px; color:var(--ink);">Limites actuelles</div></div>
+      ${listDot("Couverture partielle des scénarios d'incidents les plus rares",'var(--flag)')}
+      ${listDot('Dépendance à la qualité des seuils de détection définis','var(--flag)')}
+      ${listDot('Décisions à forte criticité encore validées par un humain','var(--flag)')}
+      ${listDot("Évaluation reposant sur un jeu de scénarios contrôlés, pas encore sur un trafic de production réel",'var(--flag)')}
+    </div>
+    <div class="card card-dark" data-anim style="--d:3">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">${iconCircle('route','bg-teal')}<div style="font-family:var(--display); font-weight:700; font-size:17px; color:var(--teal);">Perspectives</div></div>
+      <div style="color:#dac2e6;">
+        ${listDot("Étendre la couverture à davantage de catégories d'incidents",'var(--teal)')}
+        ${listDot("Affiner le calibrage des prompts de l'agent Guardian",'var(--teal)')}
+        ${listDot('Déploiement progressif en environnement de production réel','var(--teal)')}
+        ${listDot('Tableau de bord temps réel pour le suivi des décisions des agents','var(--teal)')}
+      </div>
+    </div>
+  </div>
+</div>
+`});
+
+/* ---- 18. CONCLUSION ---- */
+S.push({cls:'slide-dark', html:`
+<div class="pad">
+  <div class="eyebrow eyebrow-dark" data-anim style="--d:0">CONCLUSION</div>
+  <h1 class="title title-dark" style="font-size:46px;" data-anim style="--d:1">KubePilot en bref</h1>
+  <div style="margin-top:22px;">
+    ${[
+      'Une architecture en 5 couches : interface, API, pipeline d\'agents, mémoire et infrastructure',
+      'Un cycle de décision avec double vérification — règles strictes ET IA indépendante — avant toute action',
+      'Un tableau de bord complet qui garde l\'humain dans la boucle : approbations, escalades, chat IA, RBAC',
+      'Une robustesse pensée même pour les pannes de l\'IA elle-même, et une vision anticipée des pannes à venir',
+      'Une base solide pour automatiser une part croissante du travail d\'un expert Kubernetes'
+    ].map((t,idx)=>`<div data-anim style="--d:${idx+2}; display:flex; gap:14px; align-items:flex-start; margin-bottom:14px;"><div style="width:9px;height:9px;border-radius:50%;background:var(--teal); margin-top:6px; flex:none;"></div><div style="font-size:14.5px; color:#dac2e6;">${t}</div></div>`).join('')}
+  </div>
+  <div style="width:280px; height:1.5px; background:var(--teal); margin:26px 0 22px;" data-anim style="--d:6"></div>
+  <div style="font-family:var(--display); font-style:italic; font-weight:600; font-size:21px;" data-anim style="--d:7">Merci pour votre attention.</div>
+  <div class="lede lede-dark" style="margin-top:8px;" data-anim style="--d:8">Questions &amp; discussion</div>
+</div>
+<div style="position:absolute; right:70px; top:50%; transform:translateY(-50%);" data-anim style="--d:7">
+  <div style="width:140px;height:140px;border-radius:50%;background:var(--blue); display:flex;align-items:center;justify-content:center;">
+    <div style="width:60px;height:60px;color:#fff;">${ICONS.question}</div>
+  </div>
+</div>
+`});
+
+
+/* ============================================================
+   NODE METADATA + CLUSTER LAYOUT (the "graph")
+   ============================================================ */
+const NODE_META = [
+  {icon:'sitemap',  label:'Titre'},
+  {icon:'hands',    label:'Remerciements'},
+  {icon:'clipboard',label:'Sommaire'},
+  {icon:'warning',  label:'Contexte'},
+  {icon:'robot',    label:'Qu\'est-ce qu\'un agent'},
+  {icon:'sync',     label:'Le DevOps'},
+  {icon:'network',  label:'Kubernetes'},
+  {icon:'user',     label:'Rôle expert K8s'},
+  {icon:'bolt',     label:"En une phrase"},
+  {icon:'sitemap',  label:'Architecture'},
+  {icon:'server',   label:'Surveillance'},
+  {icon:'database', label:'Mémoire'},
+  {icon:'brain',    label:'Cycle de décision'},
+  {icon:'gavel',    label:'Garde-fous'},
+  {icon:'route',    label:'Escalades'},
+  {icon:'sitemap',  label:'Pages du dashboard'},
+  {icon:'user',     label:'Tableau de bord'},
+  {icon:'question', label:'Chat AI'},
+  {icon:'lock',     label:'Sécurité'},
+  {icon:'network',  label:'Notifications'},
+  {icon:'chart',    label:'Capacité'},
+  {icon:'bolt',     label:"Résilience IA"},
+  {icon:'chart',    label:'Méthodologie'},
+  {icon:'chart',    label:'Efficacité'},
+  {icon:'chart',    label:'Couverture'},
+  {icon:'route',    label:'Limites'},
+  {icon:'question', label:'Conclusion'},
+];
+
+const CLUSTERS = [
+  {key:'open',       label:'Ouverture',        slides:[0,1,2],          color:'#8c6aa3', tint:'rgba(218,194,230,.10)', border:'rgba(218,194,230,.35)'},
+  {key:'concepts',   label:'Concepts clés',    slides:[3,4,5,6,7],      color:'var(--blue)',     tint:'rgba(244,193,11,.10)',  border:'rgba(244,193,11,.35)'},
+  {key:'apercu',     label:'Aperçu',           slides:[8],              color:'#8c6aa3', tint:'rgba(218,194,230,.10)', border:'rgba(218,194,230,.35)'},
+  {key:'arch',       label:'Architecture',     slides:[9],              color:'var(--blue)',     tint:'rgba(244,193,11,.10)',  border:'rgba(244,193,11,.35)'},
+  {key:'reactive',   label:'Partie réactive',  slides:[10,11,12,13,14], color:'#8c6aa3', tint:'rgba(218,194,230,.10)', border:'rgba(218,194,230,.35)'},
+  {key:'active',     label:'Partie active',    slides:[15,16,17,18,19], color:'var(--blue)',      tint:'rgba(244,193,11,.10)',  border:'rgba(244,193,11,.35)'},
+  {key:'robustesse', label:'Robustesse',       slides:[20,21],          color:'#8c6aa3', tint:'rgba(218,194,230,.10)', border:'rgba(218,194,230,.35)'},
+  {key:'eval',       label:'Évaluation',       slides:[22,23,24],       color:'var(--blue)',     tint:'rgba(244,193,11,.10)',  border:'rgba(244,193,11,.35)'},
+  {key:'close',      label:'Clôture',          slides:[25,26],          color:'#8c6aa3', tint:'rgba(218,194,230,.10)', border:'rgba(218,194,230,.35)'},
+];
+
+const STAGE_W = 1280, STAGE_H = 720;
+const NODE_W = 108, NODE_H = 61;
+const NS = NODE_W / STAGE_W;
+
+const GROUP_X = [75, 216, 357, 499, 640, 782, 923, 1065, 1206];
+const nodePos = new Array(NODE_META.length);
+
+CLUSTERS.forEach((c, ci) => {
+  const n = c.slides.length;
+  const dy = 88;
+  c.x = GROUP_X[ci];
+  c.spanTop = 360 - ((n-1)/2)*dy - NODE_H/2 - 24;
+  c.spanBot = 360 + ((n-1)/2)*dy + NODE_H/2 + 24;
+  c.slides.forEach((slideIdx, i) => {
+    const y = 360 + (i - (n-1)/2) * dy;
+    nodePos[slideIdx] = {x:c.x, y, cluster:c};
+  });
+});
+
+/* ============================================================
+   RENDER GRAPH CHROME (lanes + edges)
+   ============================================================ */
+const graphChrome = document.getElementById('graph-chrome');
+let lanesHtml = CLUSTERS.map((c,ci) => `
+  <div class="lane" data-cluster="${ci}" style="left:${c.x-68}px; width:136px; top:${Math.max(46,c.spanTop)}px; bottom:${720-Math.min(674,c.spanBot)}px; background:${c.tint}; border-color:${c.border};"></div>
+  <div class="lane-label" data-cluster-label="${ci}" style="top:${Math.max(46,c.spanTop)-28}px; left:${c.x-68}px; width:136px;">${c.label}</div>
+`).join('');
+
+let edgesSvg = `<svg id="edges" viewBox="0 0 ${STAGE_W} ${STAGE_H}">`;
+for(let i=0;i<NODE_META.length-1;i++){
+  const a = nodePos[i], b = nodePos[i+1];
+  const cx1 = a.x + (b.x-a.x)*0.5, cx2 = a.x + (b.x-a.x)*0.5;
+  const d = `M ${a.x} ${a.y} C ${cx1} ${a.y}, ${cx2} ${b.y}, ${b.x} ${b.y}`;
+  edgesSvg += `<path class="edge" d="${d}"/><path class="edge-flow" d="${d}" style="animation-delay:${(i*0.18).toFixed(2)}s"/>`;
+}
+edgesSvg += `</svg>`;
+
+graphChrome.innerHTML = lanesHtml + edgesSvg + `
+  <div class="map-title">
+    <div class="eyebrow">KubePilot — Soutenance de stage</div>
+    <h2>Cliquez sur une étape pour l'ouvrir</h2>
+  </div>
+`;
+
+/* ============================================================
+   RENDER SLIDES (graph nodes that grow into full slides)
+   ============================================================ */
+const TOTAL = S.length;
+const stage = document.getElementById('stage');
+const pulseSvg = `<svg viewBox="0 0 160 22" preserveAspectRatio="none"><path class="pulse-line" d="M0 11 H40 L48 2 L56 20 L64 11 H160"/></svg>`;
+
+const LIGHT_BG = ['#fdfafc','#fff8bb','#dac2e6'];
+stage.insertAdjacentHTML('beforeend', S.map((s,idx)=>{
+  const meta = NODE_META[idx];
+  const pos = nodePos[idx];
+  const ci = CLUSTERS.indexOf(pos.cluster);
+  const slideBg = LIGHT_BG[ci % LIGHT_BG.length];
+  const pages = s.pages || [s.html];
+  const pagesHtml = pages.map((p,pi)=>`<div class="detail-page${pi===0?' page-active':''}" data-page="${pi}">${p}</div>`).join('');
+  const pageDotsHtml = pages.length>1 ? `<div class="page-dots">${pages.map((_,pi)=>`<div class="page-dot${pi===0?' now':''}"></div>`).join('')}</div>` : '';
+  return `
+  <section class="slide ${s.cls}" data-index="${idx}" style="--nx:${pos.x-STAGE_W/2}px; --ny:${pos.y-STAGE_H/2}px; --ns:${NS}; --accent:${pos.cluster.color}; --slide-bg:${slideBg};">
+    <div class="node-face">
+      <div class="node-num">${String(idx+1).padStart(2,'0')}</div>
+      <div class="node-ic">${ICONS[meta.icon]}</div>
+      <div class="node-lbl">${meta.label}</div>
+    </div>
+    <div class="detail-content">
+      <div class="pages-wrap">${pagesHtml}</div>
+      ${pageDotsHtml}
+      <div class="pulse-wrap">${pulseSvg}</div>
+      <div class="chrome-footer"><span>KubePilot — Soutenance</span></div>
+    </div>
+  </section>
+  `;
+}).join(''));
+
+const slideEls = Array.from(document.querySelectorAll('.slide'));
+
+/* shrink each .flow-box-inner to the narrowest width that doesn't add extra wrap lines
+   (a flex-wrap row's intrinsic width is its unwrapped max-content, so plain shrink-to-fit
+   CSS always reports "full available width" here — this binary-searches the real fit) */
+function fitFlowBoxes(){
+  document.querySelectorAll('.flow-box-inner').forEach(box=>{
+    const wrap = box.parentElement;
+    const maxW = wrap.clientWidth;
+    if(!maxW) return;
+    box.style.width = maxW + 'px';
+    const targetH = box.scrollHeight;
+    let lo = 60, hi = maxW;
+    for(let i=0;i<16;i++){
+      const mid = (lo+hi)/2;
+      box.style.width = mid + 'px';
+      if(box.scrollHeight <= targetH) hi = mid; else lo = mid;
+    }
+    box.style.width = Math.ceil(hi) + 'px';
+  });
+}
+requestAnimationFrame(fitFlowBoxes);
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(fitFlowBoxes); }
+
+/* dots */
+const dotsWrap = document.getElementById('ui-dots');
+dotsWrap.innerHTML = S.map((_,i)=>`<div class="ui-dot" data-i="${i}"></div>`).join('');
+const dotEls = Array.from(dotsWrap.children);
+
+/* ============================================================
+   CONTROLLER
+   ============================================================ */
+let current = null; // null = map mode
+let subPage = 0; // internal page within the current slide
+let wfInterval = null;
+
+function pageCount(idx){
+  const s = S[idx];
+  return (s && s.pages) ? s.pages.length : 1;
+}
+function showPage(slideEl, pi){
+  Array.from(slideEl.querySelectorAll('.detail-page')).forEach((p,i)=> p.classList.toggle('page-active', i===pi));
+  Array.from(slideEl.querySelectorAll('.page-dot')).forEach((d,i)=> d.classList.toggle('now', i===pi));
+}
+
+function startWorkflowCycle(slideEl){
+  const steps = Array.from(slideEl.querySelectorAll('.cycle-step'));
+  if(!steps.length) return;
+  let i = 0;
+  steps.forEach(s=>s.classList.remove('cycle-active'));
+  steps[0].classList.add('cycle-active');
+  wfInterval = setInterval(()=>{
+    steps[i].classList.remove('cycle-active');
+    i = (i+1) % steps.length;
+    steps[i].classList.add('cycle-active');
+  }, 1300);
+}
+function stopWorkflowCycle(){
+  if(wfInterval){ clearInterval(wfInterval); wfInterval = null; }
+}
+
+function shineLane(idx){
+  document.querySelectorAll('.lane-shine').forEach(el=>el.classList.remove('lane-shine'));
+  document.querySelectorAll('.lane-label-shine').forEach(el=>el.classList.remove('lane-label-shine'));
+  const ci = CLUSTERS.findIndex(c=>c.slides.includes(idx));
+  if(ci===-1) return;
+  const lane = document.querySelector(`.lane[data-cluster="${ci}"]`);
+  const label = document.querySelector(`.lane-label[data-cluster-label="${ci}"]`);
+  if(lane) lane.classList.add('lane-shine');
+  if(label) label.classList.add('lane-label-shine');
+}
+
+function enterDetail(idx){
+  idx = Math.max(0, Math.min(TOTAL-1, idx));
+  const prevEl = current!==null ? slideEls[current] : null;
+  if(prevEl){ prevEl.classList.remove('active','content-in'); }
+  stopWorkflowCycle();
+
+  const newEl = slideEls[idx];
+  newEl.classList.add('active');
+  stage.classList.add('is-detail');
+  shineLane(idx);
+  document.body.classList.add('in-detail');
+
+  subPage = 0;
+  showPage(newEl, 0);
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=> newEl.classList.add('content-in'));
+  });
+
+  if(newEl.querySelector('.cycle-step')){
+    setTimeout(()=> startWorkflowCycle(newEl), 550);
+  }
+
+  current = idx;
+  updateChrome();
+}
+
+function backToMap(){
+  if(current===null) return;
+  const el = slideEls[current];
+  el.classList.remove('active','content-in');
+  stopWorkflowCycle();
+  stage.classList.remove('is-detail');
+  document.body.classList.remove('in-detail');
+  current = null;
+  updateChrome();
+}
+
+let mapTransitTimer = null;
+function goViaMap(targetIdx){
+  targetIdx = Math.max(0, Math.min(TOTAL-1, targetIdx));
+  if(current===null){ enterDetail(targetIdx); return; }
+  if(targetIdx===current) return;
+  if(mapTransitTimer) clearTimeout(mapTransitTimer);
+  backToMap();
+  mapTransitTimer = setTimeout(()=> enterDetail(targetIdx), 700);
+}
+
+function updateChrome(){
+  if(current===null){
+    document.getElementById('ui-progress').style.width = '0%';
+    return;
+  }
+  document.getElementById('ui-progress').style.width = ((current+1)/TOTAL*100)+'%';
+  document.getElementById('ui-counter').textContent = String(current+1).padStart(2,'0')+' / '+TOTAL;
+  dotEls.forEach((d,i)=>{
+    d.classList.toggle('now', i===current);
+    d.classList.toggle('done', i<current);
+  });
+}
+
+/* click on a node/slide opens it (only when not already active) */
+slideEls.forEach((el,idx)=>{
+  el.addEventListener('click', (e)=>{
+    if(el.classList.contains('active')) return;
+    enterDetail(idx);
+  });
+});
+
+function goNext(){
+  if(current===null){ enterDetail(0); return; }
+  if(subPage < pageCount(current)-1){
+    subPage++;
+    showPage(slideEls[current], subPage);
+    return;
+  }
+  goViaMap(current+1);
+}
+function goPrev(){
+  if(current===null) return;
+  if(subPage > 0){
+    subPage--;
+    showPage(slideEls[current], subPage);
+    return;
+  }
+  goViaMap(current-1);
+}
+
+document.getElementById('mapBtn').addEventListener('click', backToMap);
+document.getElementById('nextBtn').addEventListener('click', goNext);
+document.getElementById('prevBtn').addEventListener('click', goPrev);
+dotEls.forEach((d,i)=> d.addEventListener('click', ()=> enterDetail(i)));
+
+window.addEventListener('keydown', e=>{
+  if(['ArrowRight','PageDown',' '].includes(e.key)){
+    e.preventDefault();
+    goNext();
+  } else if(['ArrowLeft','PageUp'].includes(e.key)){
+    e.preventDefault();
+    goPrev();
+  } else if(e.key==='Escape'){ backToMap(); }
+  else if(e.key==='Home'){ goViaMap(0); }
+  else if(e.key==='End'){ goViaMap(TOTAL-1); }
+  else if(e.key.toLowerCase()==='f'){ toggleFullscreen(); }
+});
+
+let touchX = null;
+document.addEventListener('touchstart', e=> touchX = e.touches[0].clientX);
+document.addEventListener('touchend', e=>{
+  if(touchX===null || current===null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if(Math.abs(dx) > 50){ if(dx<0) goNext(); else goPrev(); }
+  touchX = null;
+});
+
+function toggleFullscreen(){
+  if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); }
+  else{ document.exitFullscreen(); }
+}
+
+/* responsive scaling */
+function resize(){
+  const scale = Math.min(window.innerWidth/1280, window.innerHeight/720);
+  stage.style.transform = `translate(-50%,-50%) scale(${scale})`;
+}
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

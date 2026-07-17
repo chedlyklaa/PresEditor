@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node studio-mA-verify.mjs)",
+      "Bash(npm install *)",
+      "Bash(docker compose *)",
+      "Bash(node milestoneA-verify.mjs)"
+    ]
+  }
+}
