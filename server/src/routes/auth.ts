@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ObjectId } from 'mongodb';
+import { ObjectId, MongoServerError } from 'mongodb';
 import { users } from '../db.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { createSession, destroySession, SESSION_COOKIE } from '../auth/session.js';
@@ -39,7 +39,19 @@ export default async function authRoutes(app: FastifyInstance) {
 
       const passwordHash = await hashPassword(password);
       const _id = new ObjectId();
-      await users().insertOne({ _id, email, passwordHash, displayName, createdAt: new Date() });
+      try {
+        await users().insertOne({ _id, email, passwordHash, displayName, createdAt: new Date() });
+      } catch (err) {
+        // Two concurrent signups for the same email can both pass the
+        // findOne check above and race to insertOne — the unique index on
+        // `email` (db.ts) still catches it, but as an uncaught duplicate-key
+        // error otherwise surfaced to the client as a raw 500. Give the
+        // second one the same 409 the check above would have given it.
+        if (err instanceof MongoServerError && err.code === 11000) {
+          return reply.code(409).send({ error: 'Un compte existe déjà avec cette adresse.' });
+        }
+        throw err;
+      }
       const session = await createSession(_id);
       reply.setCookie(SESSION_COOKIE, session.id, cookieOpts(session.expiresAt));
       return { email, displayName };

@@ -6,12 +6,24 @@ services:
       - mongo_data:/data/db
     ports:
       - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
 
   server:
     build: ./server
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     environment:
       PORT: 4000
       MONGO_URI: mongodb://mongo:27017/preseditor
@@ -23,6 +35,30 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "4000:4000"
+    healthcheck:
+      # No curl/wget guaranteed on node:alpine — Node itself always is,
+      # since it's the app's own runtime.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:4000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
 
 volumes:
   mongo_data:
+
+# Resource limits above are conservative starting points for the small
+# single-instance deployment this project targets today, not a load-tested
+# ceiling — raise them if the server/Mongo get OOM-killed or CPU-throttled
+# under real traffic.

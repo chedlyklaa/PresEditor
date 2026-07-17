@@ -4,6 +4,8 @@ A browser-based, scene-graph presentation editor. Instead of editing a slide as 
 
 A companion API (`server/`) adds optional account-based cloud save, so a deck can live in the browser only (local mode) or be persisted to MongoDB behind email/password auth.
 
+> For internal design decisions and trade-offs beyond this overview — the canvas rebuild strategy, undo/redo coalescing, the session model — see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## Contents
 
 - [Features](#features)
