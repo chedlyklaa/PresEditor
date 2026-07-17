@@ -32,3 +32,30 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Root-level scratch copies of deck assets — the real, in-use copies live
+# in PresEditor/public/. These were stray duplicates kept locally only;
+# root-anchored (leading /) so this does NOT affect the identically-named
+# files inside PresEditor/public/.
+/agentLog.png
+/aiassistant.png
+/approval.png
+/bigapps_logo-removebg.png
+/bigapps_logo.jpg
+/capacitypage.png
+/clusterhealth.png
+/deny.png
+/escalationExp.png
+/escalationpage.png
+/history.png
+/login.png
+/notificationpage.png
+/orderchat.png
+/presentation.html
+/presentation_backup.html
+/presentation_smallBackup.html
+/romdhane-glaa.jpg
+/silence.png
+/team.jpg
+/usermanagement.png
+/vid1.mp4
