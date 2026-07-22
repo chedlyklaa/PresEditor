@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useEditor } from '../../state/EditorContext';
 import { EI } from '../../lib/icons';
 import { toast } from '../../lib/toastBus';
+import { optimizeImageFile } from '../../lib/imageCompression';
 
 function Icon({ name }: { name: string }) {
   return <span dangerouslySetInnerHTML={{ __html: (EI as Record<string, string>)[name] }} />;
@@ -29,13 +30,12 @@ export default function AssetLibrary() {
   const slide = state.selectedSlideId ? state.slidesById[state.selectedSlideId] : null;
   const currentSceneId = slide?.pages[state.selectedPage] ?? null;
 
-  function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => actions.registerAsset(reader.result as string, 'image', file.name);
-    reader.readAsDataURL(file);
+    const dataUrl = await optimizeImageFile(file);
+    actions.registerAsset(dataUrl, 'image', file.name);
   }
 
   function insertOnCurrentSlide(assetId: string) {

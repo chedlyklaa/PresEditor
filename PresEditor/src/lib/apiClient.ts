@@ -33,11 +33,20 @@ export interface ProjectFull {
 // with an actual HTTP error page (502/504, not a network-level fetch
 // rejection) when the backend itself is unreachable — so "got an ApiError"
 // alone does NOT mean "confirmed not authenticated".
+//
+// `conflictUpdatedAt` is only ever set on a 409 from PUT /api/projects/:id
+// (routes/projects.ts's expectedUpdatedAt check) — the server's current
+// `updatedAt` for the project, so a caller could in principle offer "reload
+// the newer version" without a second round trip. EditorContext.tsx doesn't
+// use it yet (it just surfaces the conflict and stops autosaving), but it's
+// free to carry through now rather than a second breaking change later.
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  conflictUpdatedAt?: string;
+  constructor(message: string, status: number, conflictUpdatedAt?: string) {
     super(message);
     this.status = status;
+    this.conflictUpdatedAt = conflictUpdatedAt;
   }
 }
 
@@ -51,8 +60,8 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
     ...opts,
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}) as { error?: string });
-    throw new ApiError(body.error || `Erreur serveur (${res.status})`, res.status);
+    const body = await res.json().catch(() => ({}) as { error?: string; updatedAt?: string });
+    throw new ApiError(body.error || `Erreur serveur (${res.status})`, res.status, body.updatedAt);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -88,8 +97,15 @@ export function createProject(title: string, json: unknown) {
   return request<ProjectSummary>('/api/projects', { method: 'POST', body: JSON.stringify({ title, json }) });
 }
 
-export function updateProject(id: string, title: string, json: unknown) {
-  return request<{ ok: true }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify({ title, json }) });
+// `expectedUpdatedAt` (omitted = unconditional, matching every existing
+// caller until EditorContext.tsx's autosave path is updated to pass it) —
+// see routes/projects.ts's FullUpdateBody comment for the conflict check
+// this enables.
+export function updateProject(id: string, title: string, json: unknown, expectedUpdatedAt?: string) {
+  return request<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ title, json, expectedUpdatedAt }),
+  });
 }
 
 export function renameProject(id: string, title: string) {

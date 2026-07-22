@@ -3,6 +3,7 @@ import { useEditor } from '../state/EditorContext';
 import { findLocation } from '../state/reducer';
 import { EI, ICON_KEYS } from '../lib/icons';
 import { extractPalette } from '../lib/paletteFromCss';
+import { optimizeImageFile } from '../lib/imageCompression';
 
 function Icon({ name }) {
   return <span dangerouslySetInnerHTML={{ __html: EI[name] }} />;
@@ -45,13 +46,11 @@ function GradientEditor({ value, disabled, onChange }) {
 
 function ImageBgPicker({ value, disabled, onPick }) {
   const inputRef = useRef(null);
-  function handleFile(e) {
+  async function handleFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onPick(reader.result);
-    reader.readAsDataURL(file);
+    onPick(await optimizeImageFile(file));
   }
   return (
     <div className="ed-bg-image-row">

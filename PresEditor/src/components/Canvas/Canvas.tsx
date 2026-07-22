@@ -19,6 +19,7 @@ import { resolveEffectiveBackground } from '../../lib/slideBackground';
 import { resolveEffectiveMaster, buildComponentsMap, mainSlideIndex, mainSlideCount } from '../../scene/renderContext';
 import { ensureAnimationCss } from '../../lib/animationCss';
 import { toast } from '../../lib/toastBus';
+import { optimizeImageFile, estimatedBytesOf } from '../../lib/imageCompression';
 import { uid } from '../../lib/id';
 import { useCanvasZoom } from '../../lib/useCanvasZoom';
 import CanvasToolbar from './CanvasToolbar';
@@ -347,34 +348,36 @@ export default function Canvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selection, scene?.id]);
 
-  function warnIfLarge(file: File) {
-    if (file.size > LARGE_FILE_WARNING_BYTES) {
+  // Checked against the *embedded* size (post-optimizeImageFile), not the
+  // raw upload — that's what actually lands in the autosave payload/export
+  // file, so it's the number that matters here. A video (never
+  // recompressed by optimizeImageFile) still warns off its own original
+  // size, same as before this milestone.
+  function warnIfLarge(bytes: number) {
+    if (bytes > LARGE_FILE_WARNING_BYTES) {
       toast(
-        `Fichier volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo) : il sera intégré dans la présentation mais pourrait dépasser la capacité de sauvegarde locale du navigateur — pensez à exporter régulièrement.`,
+        `Fichier volumineux (${(bytes / 1024 / 1024).toFixed(1)} Mo) : il sera intégré dans la présentation mais pourrait dépasser la capacité de sauvegarde locale du navigateur — pensez à exporter régulièrement.`,
         true
       );
     }
   }
 
-  function handleImagePicked(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImagePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     const pending = pendingImageTargetRef.current;
     if (!file || !pending) return;
-    warnIfLarge(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const doc = frameRef.current?.contentDocument;
-      const resultEl = applyImageToSlot(pending.el, reader.result as string);
-      if (resultEl && resultEl !== pending.el && doc) {
-        wireImageSlot(resultEl, doc, (targetEl: HTMLElement) => requestImageReplace(targetEl, pending.legacyRoot));
-      }
-      commitLegacyObject(pending.legacyRoot);
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await optimizeImageFile(file);
+    warnIfLarge(estimatedBytesOf(dataUrl));
+    const doc = frameRef.current?.contentDocument;
+    const resultEl = applyImageToSlot(pending.el, dataUrl);
+    if (resultEl && resultEl !== pending.el && doc) {
+      wireImageSlot(resultEl, doc, (targetEl: HTMLElement) => requestImageReplace(targetEl, pending.legacyRoot));
+    }
+    commitLegacyObject(pending.legacyRoot);
   }
 
-  function handleInsertMediaPicked(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleInsertMediaPicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     const doc = frameRef.current?.contentDocument;
@@ -388,16 +391,13 @@ export default function Canvas() {
       toast("Impossible d'insérer un média : aucun contenu existant sur cette diapositive.", true);
       return;
     }
-    warnIfLarge(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const container = (legacyRoot.firstElementChild as HTMLElement) || legacyRoot;
-      const block = insertFreeMedia(container, doc, pendingInsertKindRef.current, reader.result as string);
-      wireFreeBlock(block, doc, () => commitLegacyObject(legacyRoot));
-      wireImageSlots(block, doc, (targetEl: HTMLElement) => requestImageReplace(targetEl, legacyRoot));
-      commitLegacyObject(legacyRoot);
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await optimizeImageFile(file);
+    warnIfLarge(estimatedBytesOf(dataUrl));
+    const container = (legacyRoot.firstElementChild as HTMLElement) || legacyRoot;
+    const block = insertFreeMedia(container, doc, pendingInsertKindRef.current, dataUrl);
+    wireFreeBlock(block, doc, () => commitLegacyObject(legacyRoot));
+    wireImageSlots(block, doc, (targetEl: HTMLElement) => requestImageReplace(targetEl, legacyRoot));
+    commitLegacyObject(legacyRoot);
   }
 
   function handleAddText() {
@@ -470,17 +470,14 @@ export default function Canvas() {
   // Milestone 9: registers (or reuses, if this exact file was already
   // inserted before) an entry in the deck-wide asset store, then references
   // it by id — see lib/assets.ts's findDuplicateAsset for the dedup check.
-  function handlePhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !scene) return;
-    warnIfLarge(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const assetId = actions.registerAsset(reader.result as string, 'image', file.name);
-      actions.addObject(scene.id, 'image', { data: { assetId, fit: 'cover' } });
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await optimizeImageFile(file);
+    warnIfLarge(estimatedBytesOf(dataUrl));
+    const assetId = actions.registerAsset(dataUrl, 'image', file.name);
+    actions.addObject(scene.id, 'image', { data: { assetId, fit: 'cover' } });
   }
 
   return (

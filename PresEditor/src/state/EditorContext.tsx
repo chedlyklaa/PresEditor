@@ -18,7 +18,7 @@ import { createEmptyState, createBlankStartState } from '../lib/emptyState';
 import { parsePresentationSource } from '../lib/importPresentation';
 import { loadState, saveState, migrateState } from '../lib/storage';
 import { saveToLibrary, loadFromLibrary, deleteFromLibrary, newLibraryId } from '../lib/presentationLibrary';
-import { getProject, createProject, updateProject, updateProjectThumbnail } from '../lib/apiClient';
+import { getProject, createProject, updateProject, updateProjectThumbnail, ApiError } from '../lib/apiClient';
 import { queueSave, getQueuedSave, clearQueuedSave } from '../lib/offlineQueue';
 import { renderThumbnail } from '../lib/thumbnail';
 import { toast } from '../lib/toastBus';
@@ -180,6 +180,14 @@ export function EditorProvider({ source, children }: { source: BootSource; child
   // it succeeds, independent of further edits (see the autosave effect).
   const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const booted = useRef(false);
+  // Cloud mode only — the `updatedAt` this tab last confirmed matches the
+  // server, sent back as `expectedUpdatedAt` on the next save so the server
+  // can tell "nobody else has touched this since I last knew about it" from
+  // "another tab/device saved in between" (routes/projects.ts). Set from
+  // the initial GET on boot, and refreshed after every successful save —
+  // never used to *resolve* a conflict, just to detect one before this tab
+  // silently overwrites someone else's more recent save.
+  const lastKnownUpdatedAtRef = useRef<string | undefined>(undefined);
 
   // `actions` below reads state through this ref instead of closing over
   // `state` directly, so the actions object can stay referentially stable
@@ -219,13 +227,28 @@ export function EditorProvider({ source, children }: { source: BootSource; child
     setSaveStatus('offline');
     clearTimeout(retryTimer.current);
     const attempt = () => {
-      updateProject(projectId, title, json)
-        .then(() => {
+      updateProject(projectId, title, json, lastKnownUpdatedAtRef.current)
+        .then((res) => {
+          lastKnownUpdatedAtRef.current = res.updatedAt;
           setSaveStatus('saved');
           setSavedAt(new Date());
           clearQueuedSave(projectId);
         })
-        .catch(() => {
+        .catch((err) => {
+          // A 409 here means the server rejected on the *conflict* check,
+          // not on reachability — retrying with the same now-stale
+          // baseline would just 409 forever. Surface it once and stop,
+          // rather than the network-failure retry loop below.
+          if (err instanceof ApiError && err.status === 409) {
+            lastKnownUpdatedAtRef.current = err.conflictUpdatedAt;
+            setSaveStatus('error');
+            clearQueuedSave(projectId);
+            toast(
+              "Ce projet a été modifié depuis un autre appareil ou onglet — vos derniers changements locaux n'ont pas pu être envoyés. Rechargez la page pour voir la version la plus récente.",
+              true
+            );
+            return;
+          }
           retryTimer.current = setTimeout(attempt, 5000);
         });
     };
@@ -283,8 +306,17 @@ export function EditorProvider({ source, children }: { source: BootSource; child
           dispatch({ type: A.IMPORT_STATE, payload: resolved });
           setBootStatus('ready');
           toast('Modifications non synchronisées restaurées — nouvel envoi en cours…', true);
+          // Deliberately unconditional (no expectedUpdatedAt) — this is a
+          // recovery of edits this device already made, which by design
+          // takes priority over whatever GET would have returned, so
+          // there's nothing to compare it against. lastKnownUpdatedAtRef
+          // still gets set from the response, though, so the *next* normal
+          // autosave later in this session has a real baseline to conflict-
+          // check against instead of running unconditional for the rest of
+          // the session too.
           updateProject(projectId, queued.title, queued.json)
-            .then(() => {
+            .then((res) => {
+              lastKnownUpdatedAtRef.current = res.updatedAt;
               setSaveStatus('saved');
               setSavedAt(new Date());
               clearQueuedSave(projectId);
@@ -299,6 +331,7 @@ export function EditorProvider({ source, children }: { source: BootSource; child
         const doc = await getProject(projectId);
         const resolved = resolveProjectState(doc.json);
         if (cancelled) return;
+        lastKnownUpdatedAtRef.current = doc.updatedAt;
         dispatch({ type: A.IMPORT_STATE, payload: resolved });
         setBootStatus('ready');
       } catch (err: any) {
@@ -361,8 +394,9 @@ export function EditorProvider({ source, children }: { source: BootSource; child
     const title = state.meta.title;
     const envelope = buildProjectEnvelope(state);
     saveTimer.current = setTimeout(() => {
-      updateProject(cloudProjectId, title, envelope)
-        .then(() => {
+      updateProject(cloudProjectId, title, envelope, lastKnownUpdatedAtRef.current)
+        .then((res) => {
+          lastKnownUpdatedAtRef.current = res.updatedAt;
           setSaveStatus('saved');
           setSavedAt(new Date());
           clearQueuedSave(cloudProjectId);
@@ -374,7 +408,22 @@ export function EditorProvider({ source, children }: { source: BootSource; child
             })
             .catch(() => {});
         })
-        .catch(() => {
+        .catch((err) => {
+          // A 409 means another tab/device saved since this one last knew
+          // about the project's state — not a reachability problem, so
+          // queueing + blindly retrying the same stale baseline would just
+          // 409 forever. Surface it once instead; the *next* edit (once the
+          // user reloads, or just keeps typing) saves against the newer
+          // baseline this now records.
+          if (err instanceof ApiError && err.status === 409) {
+            lastKnownUpdatedAtRef.current = err.conflictUpdatedAt;
+            setSaveStatus('error');
+            toast(
+              "Ce projet a été modifié depuis un autre appareil ou onglet — cette dernière modification n'a pas été envoyée. Rechargez la page pour voir la version la plus récente.",
+              true
+            );
+            return;
+          }
           // Server unreachable — queue for IndexedDB persistence (survives
           // a reload) and keep retrying every few seconds until it lands,
           // independent of whether the user keeps editing.
